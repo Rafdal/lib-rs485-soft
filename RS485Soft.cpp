@@ -16,8 +16,7 @@ RS485Soft::~RS485Soft()
 }
 
 
-
-// Send NULL terminated string (null is not included in packet)
+// Send null-terminated string  NULL terminator is NOT INCLUDED in the packet !!!!  (!)
 void RS485Soft::sendChunk(const char *data)
 {
     txMode();
@@ -31,14 +30,14 @@ void RS485Soft::sendChunk(const char *data)
 	write(ASCII_ETB);
 }
 
-
-void RS485Soft::sendChunk(uint8_t *data, uint8_t size)
+// Send n bytes of data
+void RS485Soft::sendChunk(uint8_t *data, uint8_t n)
 {
 	txMode();
 	// Header
 	write(ASCII_SOH);
 	write(ASCII_STX);
-	for (uint8_t i = 0; i < size && i < RS485_SOFT_BUFFER_SIZE; i++)
+	for (uint8_t i = 0; i < n && i < RS485_SOFT_BUFFER_SIZE; i++)
 		write(data[i]); // body
 	// footer
 	write(ASCII_ETX);
@@ -59,6 +58,13 @@ uint8_t RS485Soft::_timedOut()
 	return (millis() - timestamp) > timeout;
 }
 
+void RS485Soft::_flush()
+{
+	delay(5);
+	read();
+	read();
+}
+
 /* Read chuck of data
  * @retval 0 = OK
  * @retval 1 = TIMEOUT
@@ -74,6 +80,11 @@ error_code_t RS485Soft::readChunk()
 	error_code_t out = ERROR_UNKNOWN;
 	size = 0;
 	_timeStamp();
+
+	#ifdef RS485_DEBUG
+	Serial.print(F("RS485 incoming bytes: "));
+	#endif
+
 	while (state != FSM_END)
 	{
 		uint8_t b = ASCII_NUL;
@@ -81,6 +92,11 @@ error_code_t RS485Soft::readChunk()
 		if (rs485->available())
 		{
 			b = (uint8_t)rs485->read(); // read one byte at a time
+			#ifdef RS485_DEBUG
+			char str[5];
+			sprintf(str, "%02X ", b);
+			Serial.print(str);
+			#endif
 		}
 
 		if (_timedOut())
@@ -173,6 +189,12 @@ error_code_t RS485Soft::readChunk()
 			break;
 		}
 	}
+
+	#ifdef RS485_DEBUG
+	Serial.println();
+	#endif
+
+	_flush();
     errorCode = out;
 	return out;
 }
