@@ -16,7 +16,7 @@
  *		RE -> D3
  */
 
-#define MODE MASTER			// MASTER or SLAVE
+#define MODE SLAVE			// MASTER or SLAVE
 #define SEND_INTERVAL 2000	// milliseconds
 
 // Wiring
@@ -58,11 +58,12 @@ void loop()
 
 	if(rs485.available())
 	{
-		if(rs485.readChunk() == ERROR_OK)
+		if(rs485.readChunk() == NEW_PACKET)
 		{
+			Serial.print("Received: ");
 			rs485.printChunk();
 		}
-		else
+		else if (rs485.error())
 		{
 			Serial.print("Error reading chunk code: ");
 			Serial.println( rs485.error() );
@@ -71,15 +72,15 @@ void loop()
 	#elif MODE == SLAVE
 	if(rs485.available())
 	{
-		if(rs485.readChunk() == ERROR_OK)
+		if(rs485.readChunk() == NEW_PACKET)
 		{
 			if(rs485.chunkData(0) == 't')
 			{
-				char msg[] = "echo!";
-				rs485.sendChunk((uint8_t*)msg, 5);
+				Serial.println("Received 't', sending echo");
+				rs485.sendChunk("echo!");
 			}
 		}
-		else
+		else if (rs485.error())
 		{
 			Serial.print("Error reading chunk code: ");
 			Serial.println( rs485.error() );

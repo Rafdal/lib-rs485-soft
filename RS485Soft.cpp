@@ -1,7 +1,7 @@
 #include "RS485Soft.h"
 
-/* 
- * 
+/*
+ *
  */
 RS485Soft::RS485Soft(SoftwareSerial &softSerial, uint8_t rxPin, uint8_t txPin, uint8_t txControl)
 {
@@ -18,21 +18,21 @@ RS485Soft::~RS485Soft()
 	rs485->end();
 }
 
-
 // Send null-terminated string  NULL terminator is NOT INCLUDED in the packet !!!!  (!)
 void RS485Soft::sendChunk(const char *data)
 {
-    txMode();
+	txMode();
 	// Header
-	write(ASCII_NUL);
 	write(ASCII_NUL);
 	write(ASCII_SOH);
 	write(ASCII_STX);
-	for (uint8_t i = 0; i < RS485_SOFT_BUFFER_SIZE && ( data[i] != (char)0 ); i++)
+
+	for (uint8_t i = 0; i < RS485_SOFT_BUFFER_SIZE && (data[i] != (char)0); i++)
 		write((uint8_t)data[i]); // body
+
 	// footer
 	write(ASCII_ETX);
-	write(ASCII_ETB);  // 23 = 16 + 4 + 2 + 1 = 0001 0111 = 1 7
+	write(ASCII_ETB); // 23 = 16 + 4 + 2 + 1 = 0001 0111 = 1 7
 }
 
 // Send n bytes of data
@@ -40,7 +40,6 @@ void RS485Soft::sendChunk(uint8_t *data, uint8_t n)
 {
 	txMode();
 	// Header
-	write(ASCII_NUL);
 	write(ASCII_NUL);
 	write(ASCII_SOH);
 	write(ASCII_STX);
@@ -65,27 +64,23 @@ uint8_t RS485Soft::_timedOut()
 	return (millis() - timestamp) > timeout;
 }
 
-void RS485Soft::_flush()
-{
-	delay(10); // flush incoming 
-	read();
-	read();
-	read();
-}
+
 
 /* Read chuck of data
- * @retval 0 = OK
- * @retval 1 = TIMEOUT
- * @retval 2 = PACKET INCOMPLETE OR BROKEN
- * @retval 3 = BUFFER OVERFLOW
- * @retval 4 = EMPTY PACKET
- * @retval 5 = UNKNOWN ERROR
+ * @retval 0 = NEW_PACKET
+ * @retval 1 = NULL_PACKET
+ * @retval 2 = ERROR_TIMEOUT
+ * @retval 3 = ERROR_EXCEEDED_NULL_COUNT
+ * @retval 4 = ERROR_INCOMPLETE_OR_BROKEN
+ * @retval 5 = ERROR_OVERFLOW
+ * @retval 6 = ERROR_EMPTY
+ * @retval 7 = ERROR_UNKNOWN
  */
-error_code_t RS485Soft::readChunk()
+read_code_t RS485Soft::readChunk()
 {
-    rxMode();
-	read_state_t state = FSM_WAIT_H0;
-	error_code_t out = ERROR_UNKNOWN;
+	rxMode();
+	read_fsm_state_t state = FSM_WAIT_H0;
+	read_code_t out = ERROR_UNKNOWN;
 	size = 0;
 
 	#ifdef RS485_DEBUG
@@ -95,7 +90,7 @@ error_code_t RS485Soft::readChunk()
 	Serial.print("\t\t");
 	#endif
 
-	uint8_t last_state=0;
+	uint8_t last_state = 0;
 	uint8_t debug_output[256];
 	uint8_t debug_output_count = 0;
 
@@ -103,15 +98,13 @@ error_code_t RS485Soft::readChunk()
 
 	_timeStamp();
 
-	uint8_t nullCounter = 0; // used with the header of packet, to ignore nulls
-
 	while (state != FSM_END)
 	{
 		uint16_t b = ASCII_EMPTY_VALUE; // this value will be ignored
 
 		if (rs485->available())
 		{
-			b = (uint16_t)rs485->read(); // read one byte at a time
+			b = read(); // read one byte at a time
 
 			#ifdef RS485_DEBUG
 			debug_output[debug_output_count++] = (uint8_t)b;
@@ -126,26 +119,21 @@ error_code_t RS485Soft::readChunk()
 
 		switch (state) // FINITE STATE MACHINE
 		{
-		case FSM_WAIT_H0:
-			if (b == ASCII_SOH)
+		case FSM_WAIT_H0: 
+			if (b == ASCII_SOH) // First byte header
 			{
 				state = FSM_WAIT_H1; // OK, next state
 				_timeStamp();
 			}
-			if (b == ASCII_NUL)
+			if (b == ASCII_NUL) // Ignore first NULL bytes
 			{
-				if(nullCounter > 5)
-				{
-					state = FSM_END;
-					out = ERROR_EXCEEDED_NULL_COUNT;
-				}
-				nullCounter++;
-				_timeStamp();
+				out = NULL_PACKET;
+				state = FSM_END;
 			}
 			break;
 
 		case FSM_WAIT_H1:
-			if (b == ASCII_STX)
+			if (b == ASCII_STX) // Second byte header
 			{
 				state = FSM_PACKET; // OK, next state
 				_timeStamp();
@@ -161,19 +149,21 @@ error_code_t RS485Soft::readChunk()
 			switch (b)
 			{
 			case ASCII_EMPTY_VALUE:
-				break;
+			break;
 			case ASCII_ETX:
 			{
-                if(size == 0){
-                    out = ERROR_EMPTY;
-                    state = FSM_END;
-                }
-                else{
-                    _timeStamp();
-                    state = FSM_WAIT_F1;
-                }
+				if (size == 0)
+				{
+					out = ERROR_EMPTY;
+					state = FSM_END;
+				}
+				else
+				{
+					_timeStamp();
+					state = FSM_WAIT_F1;
+				}
 			}
-            break;
+			break;
 			case ASCII_ETB:
 			{
 				state = FSM_END;
@@ -200,7 +190,11 @@ error_code_t RS485Soft::readChunk()
 			if (b == ASCII_ETB)
 			{
 				state = FSM_END; // OK
-				out = ERROR_OK;		 // OK Packet Complete!
+				out = NEW_PACKET;	 // OK Packet Complete!
+				// flush
+				delay(10);
+				read();
+				read();
 			}
 			else if (b != ASCII_EMPTY_VALUE)
 			{
@@ -219,11 +213,11 @@ error_code_t RS485Soft::readChunk()
 		}
 	}
 
-	#ifdef RS485_DEBUG
+#ifdef RS485_DEBUG
 	switch (out)
 	{
 	case ERROR_TIMEOUT:
-		Serial.print("ERROR LOG: timeout of: ");
+		Serial.print("ERROR_TIMEOUT: timeout of (ms) ");
 		Serial.println(millis() - timestamp);
 		break;
 
@@ -236,7 +230,7 @@ error_code_t RS485Soft::readChunk()
 		break;
 	}
 	Serial.print(F("RS485 received bytes: "));
-	for(int i=0; i<debug_output_count; i++)
+	for (int i = 0; i < debug_output_count; i++)
 	{
 		char str[5];
 		sprintf(str, "%02X ", debug_output[i]);
@@ -244,21 +238,39 @@ error_code_t RS485Soft::readChunk()
 	}
 
 	Serial.println("\n");
-	#endif
+#endif
 
-	_flush();
-    errorCode = out;
+	errorCode = out;
 	return out;
 }
 
+/* 
+ * Returns error codes
+ * @retval 0  = No errors (OK)
+ * @retval 2 = ERROR_TIMEOUT
+ * @retval 3 = ERROR_EXCEEDED_NULL_COUNT
+ * @retval 4 = ERROR_INCOMPLETE_OR_BROKEN
+ * @retval 5 = ERROR_OVERFLOW
+ * @retval 6 = ERROR_EMPTY
+ * @retval 7 = ERROR_UNKNOWN
+ */
 uint8_t RS485Soft::error()
 {
-    return errorCode;
+	switch (errorCode)
+	{
+	case NULL_PACKET:
+	case NEW_PACKET:
+		errorCode = 0; // no errors
+		break;
+	default:
+		break;
+	}
+	return errorCode;
 }
 
 void RS485Soft::printChunk()
 {
-	for(int i=0; i<size && i<RS485_SOFT_BUFFER_SIZE; i++)
+	for (int i = 0; i < size && i < RS485_SOFT_BUFFER_SIZE; i++)
 		Serial.print((char)buffer[i]);
 	Serial.println();
 }
@@ -314,6 +326,6 @@ void RS485Soft::rxMode()
 
 int RS485Soft::available()
 {
-    rxMode();
+	rxMode();
 	return rs485->available();
 }

@@ -3,8 +3,9 @@
 
 // #define RS485_DEBUG				// Enable debug: print incoming bytes
 // #define RS485_DEBUG_TIMESTAMP	// print reading timestamps
+
 #define RS485_SOFT_BUFFER_SIZE 32
-#define RS485_DEFAULT_TIMEOUT 100 // ms
+#define RS485_DEFAULT_TIMEOUT 50 // ms
 
 #include "ASCIIDefs.h"
 #include <Arduino.h>
@@ -18,20 +19,21 @@ typedef enum
 	FSM_PACKET,  // Read packet data until first footer
 	FSM_WAIT_F1, // Wait for end of packet
 	FSM_END,     // Stop FSM
-} read_state_t;
+} read_fsm_state_t;
 
 
 // readChunk() status codes
 typedef enum
 {
-	ERROR_OK, // No error
+	NEW_PACKET, // No error
+	NULL_PACKET, // No packet
 	ERROR_TIMEOUT,
 	ERROR_EXCEEDED_NULL_COUNT,
 	ERROR_INCOMPLETE_OR_BROKEN,
 	ERROR_OVERFLOW,
 	ERROR_EMPTY,
 	ERROR_UNKNOWN,
-} error_code_t;
+} read_code_t;
 
 class RS485Soft
 {
@@ -52,8 +54,6 @@ private:
 	uint8_t size;
 	uint8_t buffer[RS485_SOFT_BUFFER_SIZE]; // data chunk
 
-	void _flush();
-
 public:
 	RS485Soft(SoftwareSerial &softSerial, uint8_t rxPin, uint8_t txPin, uint8_t txControl);
 	~RS485Soft();
@@ -71,10 +71,10 @@ public:
 	// chunk handling
 	void sendChunk(uint8_t *data, uint8_t size);
 	void sendChunk(const char *data); // sends NULL terminated string (null is not included in packet)
-	error_code_t readChunk(); // read and buffer chunk of data
+	read_code_t readChunk(); // read and buffer chunk of data
 	uint8_t chunkSize();
 	uint8_t chunkData(uint8_t i);
-	uint8_t error(); // get last error code
+	uint8_t error(); // get error code
 	void clearChunk();
 
 	// debug
