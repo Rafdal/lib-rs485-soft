@@ -21,13 +21,15 @@ void RS485Soft::sendChunk(const char *data)
 {
     txMode();
 	// Header
+	write(ASCII_NUL);
+	write(ASCII_NUL);
 	write(ASCII_SOH);
 	write(ASCII_STX);
-	for (uint8_t i = 0; i < RS485_SOFT_BUFFER_SIZE && data[i] != NULL; i++)
+	for (uint8_t i = 0; i < RS485_SOFT_BUFFER_SIZE && ( data[i] != (char)0 ); i++)
 		write((uint8_t)data[i]); // body
 	// footer
 	write(ASCII_ETX);
-	write(ASCII_ETB);
+	write(ASCII_ETB);  // 23 = 16 + 4 + 2 + 1 = 0001 0111 = 1 7
 }
 
 // Send n bytes of data
@@ -35,6 +37,8 @@ void RS485Soft::sendChunk(uint8_t *data, uint8_t n)
 {
 	txMode();
 	// Header
+	write(ASCII_NUL);
+	write(ASCII_NUL);
 	write(ASCII_SOH);
 	write(ASCII_STX);
 	for (uint8_t i = 0; i < n && i < RS485_SOFT_BUFFER_SIZE; i++)
@@ -60,7 +64,8 @@ uint8_t RS485Soft::_timedOut()
 
 void RS485Soft::_flush()
 {
-	delay(5);
+	delay(10); // flush incoming 
+	read();
 	read();
 	read();
 }
@@ -79,23 +84,34 @@ error_code_t RS485Soft::readChunk()
 	read_state_t state = FSM_WAIT_H0;
 	error_code_t out = ERROR_UNKNOWN;
 	size = 0;
-	_timeStamp();
 
 	#ifdef RS485_DEBUG
-	Serial.print(F("RS485 incoming bytes: "));
+	#ifdef RS485_DEBUG_TIMESTAMP
+	Serial.print("t: ");
+	Serial.print(millis() - timestamp);
+	Serial.print("\t\t");
 	#endif
+
+	uint8_t last_state=0;
+	uint8_t debug_output[256];
+	uint8_t debug_output_count = 0;
+
+	#endif
+
+	_timeStamp();
+
+	uint8_t nullCounter = 0; // used with the header of packet, to ignore nulls
 
 	while (state != FSM_END)
 	{
-		uint8_t b = ASCII_NUL;
+		uint16_t b = ASCII_EMPTY_VALUE; // this value will be ignored
 
 		if (rs485->available())
 		{
-			b = (uint8_t)rs485->read(); // read one byte at a time
+			b = (uint16_t)rs485->read(); // read one byte at a time
+
 			#ifdef RS485_DEBUG
-			char str[5];
-			sprintf(str, "%02X ", b);
-			Serial.print(str);
+			debug_output[debug_output_count++] = (uint8_t)b;
 			#endif
 		}
 
@@ -113,6 +129,16 @@ error_code_t RS485Soft::readChunk()
 				state = FSM_WAIT_H1; // OK, next state
 				_timeStamp();
 			}
+			if (b == ASCII_NUL)
+			{
+				if(nullCounter > 5)
+				{
+					state = FSM_END;
+					out = ERROR_EXCEEDED_NULL_COUNT;
+				}
+				nullCounter++;
+				_timeStamp();
+			}
 			break;
 
 		case FSM_WAIT_H1:
@@ -121,7 +147,7 @@ error_code_t RS485Soft::readChunk()
 				state = FSM_PACKET; // OK, next state
 				_timeStamp();
 			}
-			else if (b != ASCII_NUL)
+			else if (b != ASCII_EMPTY_VALUE)
 			{
 				state = FSM_END;
 				out = ERROR_INCOMPLETE_OR_BROKEN;
@@ -131,7 +157,7 @@ error_code_t RS485Soft::readChunk()
 		case FSM_PACKET:
 			switch (b)
 			{
-			case ASCII_NUL:
+			case ASCII_EMPTY_VALUE:
 				break;
 			case ASCII_ETX:
 			{
@@ -173,7 +199,7 @@ error_code_t RS485Soft::readChunk()
 				state = FSM_END; // OK
 				out = ERROR_OK;		 // OK Packet Complete!
 			}
-			else if (b != ASCII_NUL)
+			else if (b != ASCII_EMPTY_VALUE)
 			{
 				state = FSM_END;
 				out = ERROR_INCOMPLETE_OR_BROKEN;
@@ -191,7 +217,30 @@ error_code_t RS485Soft::readChunk()
 	}
 
 	#ifdef RS485_DEBUG
-	Serial.println();
+	switch (out)
+	{
+	case ERROR_TIMEOUT:
+		Serial.print("ERROR LOG: timeout of: ");
+		Serial.println(millis() - timestamp);
+		break;
+
+	case ERROR_INCOMPLETE_OR_BROKEN:
+		Serial.print("ERROR_INCOMPLETE_OR_BROKEN - Last state:");
+		Serial.println(last_state);
+		break;
+
+	default:
+		break;
+	}
+	Serial.print(F("RS485 received bytes: "));
+	for(int i=0; i<debug_output_count; i++)
+	{
+		char str[5];
+		sprintf(str, "%02X ", debug_output[i]);
+		Serial.print(str);
+	}
+
+	Serial.println("\n");
 	#endif
 
 	_flush();

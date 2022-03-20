@@ -1,9 +1,10 @@
 #ifndef RS485_SOFT_H
 #define RS485_SOFT_H
 
-// #define RS485_DEBUG	// print incoming bytes
+#define RS485_DEBUG				// Enable debug: print incoming bytes
+#define RS485_DEBUG_TIMESTAMP	// print reading timestamps
 #define RS485_SOFT_BUFFER_SIZE 32
-#define RS485_DEFAULT_TIMEOUT 50 // ms
+#define RS485_DEFAULT_TIMEOUT 100 // ms
 
 #include "ASCIIDefs.h"
 #include <Arduino.h>
@@ -25,6 +26,7 @@ typedef enum
 {
 	ERROR_OK, // No error
 	ERROR_TIMEOUT,
+	ERROR_EXCEEDED_NULL_COUNT,
 	ERROR_INCOMPLETE_OR_BROKEN,
 	ERROR_OVERFLOW,
 	ERROR_EMPTY,

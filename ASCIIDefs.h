@@ -34,6 +34,8 @@ typedef enum {
     ASCII_GS,     // Group Separator
     ASCII_RS,     // Record Separator
     ASCII_US,     // Unit Separator
+    
+    ASCII_EMPTY_VALUE = 0xFFFF,
 } ascii_chars_t;
 
 #endif
