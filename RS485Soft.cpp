@@ -1,5 +1,8 @@
 #include "RS485Soft.h"
 
+/* 
+ * 
+ */
 RS485Soft::RS485Soft(SoftwareSerial &softSerial, uint8_t rxPin, uint8_t txPin, uint8_t txControl)
 {
 	rs485 = &softSerial;

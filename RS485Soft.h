@@ -1,8 +1,8 @@
 #ifndef RS485_SOFT_H
 #define RS485_SOFT_H
 
-#define RS485_DEBUG				// Enable debug: print incoming bytes
-#define RS485_DEBUG_TIMESTAMP	// print reading timestamps
+// #define RS485_DEBUG				// Enable debug: print incoming bytes
+// #define RS485_DEBUG_TIMESTAMP	// print reading timestamps
 #define RS485_SOFT_BUFFER_SIZE 32
 #define RS485_DEFAULT_TIMEOUT 100 // ms
 
