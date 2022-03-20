@@ -4,6 +4,11 @@
 #include <RS485Soft.h>
 
 /* 
+ *	 	This is the code of the Master and Slave at the same time, to switch between them
+ * 	 	you have to change the value of #define MODE
+ * 
+ * 		The master sends the packet "t" to the slave every 2 seconds and the slave responds with the packet "echo".
+ * 
  *   RS485 Wiring:
  *		RO -> D10
  *		DI -> D11
@@ -11,6 +16,10 @@
  *		RE -> D3
  */
 
+#define MODE MASTER			// MASTER or SLAVE
+#define SEND_INTERVAL 2000	// milliseconds
+
+// Wiring
 #define RXpin 10		// -> RO pin
 #define TXpin 11		// -> DI pin
 #define controlPin 3	// -> DE and RE pin
@@ -18,8 +27,6 @@
 #define MASTER 1
 #define SLAVE 2
 
-#define MODE MASTER			// MASTER or SLAVE
-#define SEND_INTERVAL 2000	// ms
 
 SoftwareSerial serial(RXpin, TXpin);
 RS485Soft rs485(serial, RXpin, TXpin, controlPin);
@@ -54,7 +61,6 @@ void loop()
 		if(rs485.readChunk() == ERROR_OK)
 		{
 			rs485.printChunk();
-			rs485.clearChunk();
 		}
 		else
 		{
