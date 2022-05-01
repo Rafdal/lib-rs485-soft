@@ -316,7 +316,7 @@ void RS485Soft::printChunk()
 
 void RS485Soft::clearChunk()
 {
-	size = 0; // we dont need to erase the buffer
+	size = 0; // no need to erase the buffer
 }
 
 uint8_t RS485Soft::chunkSize()
