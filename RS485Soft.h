@@ -16,8 +16,10 @@ typedef enum
 {
 	FSM_WAIT_H0, // Wait for first byte header
 	FSM_WAIT_H1, // Wait for second byte header
-	FSM_PACKET,  // Read packet data until first footer
-	FSM_WAIT_F1, // Wait for end of packet
+	FSM_WAIT_LEN,// Wait for len packet
+	FSM_PACKET,  // Read packet
+	FSM_WAIT_F1, // Check the end of packet
+	FSM_WAIT_CRC,// Wait for CRC byte
 	FSM_END,     // Stop FSM
 } read_fsm_state_t;
 
@@ -32,6 +34,7 @@ typedef enum
 	ERROR_INCOMPLETE_OR_BROKEN,
 	ERROR_OVERFLOW,
 	ERROR_EMPTY,
+	ERROR_CRC_MISMATCH,
 	ERROR_UNKNOWN,
 } read_code_t;
 
@@ -49,6 +52,7 @@ private:
 	void _timeStamp();
 	uint8_t _timedOut();
 	uint8_t errorCode; // last error code
+	uint8_t _getShitty8BitCRC(uint8_t* data, uint8_t size);
 
 	// packet data
 	uint8_t size;
@@ -69,8 +73,8 @@ public:
 	void rxMode();
 
 	// chunk handling
-	void sendChunk(uint8_t *data, uint8_t size);
-	void sendChunk(const char *data); // sends NULL terminated string (null is not included in packet)
+	bool sendChunk(uint8_t *data, uint8_t size);
+	bool sendChunk(const char *data); // sends NULL terminated string (null is not included in packet)
 	read_code_t readChunk(); // read and buffer chunk of data
 	uint8_t chunkSize();
 	uint8_t chunkData(uint8_t i);

@@ -18,36 +18,34 @@ RS485Soft::~RS485Soft()
 	rs485->end();
 }
 
-// Send null-terminated string  NULL terminator is NOT INCLUDED in the packet !!!!  (!)
-void RS485Soft::sendChunk(const char *data)
+// Send null-terminated string. NULL terminator is NOT INCLUDED in the packet !!!!  (!)
+bool RS485Soft::sendChunk(const char *data)
 {
-	txMode();
-	// Header
-	write(ASCII_NUL);
-	write(ASCII_SOH);
-	write(ASCII_STX);
-
-	for (uint8_t i = 0; i < RS485_SOFT_BUFFER_SIZE && (data[i] != (char)0); i++)
-		write((uint8_t)data[i]); // body
-
-	// footer
-	write(ASCII_ETX);
-	write(ASCII_ETB); // 23 = 16 + 4 + 2 + 1 = 0001 0111 = 1 7
+	return sendChunk((uint8_t*)data, strlen(data));
 }
 
-// Send n bytes of data
-void RS485Soft::sendChunk(uint8_t *data, uint8_t n)
+// Send bytes of data
+bool RS485Soft::sendChunk(uint8_t *data, uint8_t len)
 {
+	if(len > RS485_SOFT_BUFFER_SIZE)
+		return false;
+
 	txMode();
 	// Header
 	write(ASCII_NUL);
 	write(ASCII_SOH);
 	write(ASCII_STX);
-	for (uint8_t i = 0; i < n && i < RS485_SOFT_BUFFER_SIZE; i++)
-		write(data[i]); // body
+	write(len);
+
+	// body
+	for (uint8_t i = 0; i < len; i++)
+		write(data[i]);
+
 	// footer
 	write(ASCII_ETX);
 	write(ASCII_ETB);
+	write( _getShitty8BitCRC(data, len) );
+	return true;
 }
 
 void RS485Soft::_timeStamp()
@@ -64,6 +62,14 @@ uint8_t RS485Soft::_timedOut()
 	return (millis() - timestamp) > timeout;
 }
 
+// This does exactly what you think
+uint8_t RS485Soft::_getShitty8BitCRC(uint8_t* data, uint8_t size)
+{
+	uint8_t shittyCRC = 0;
+	for(uint8_t i=0; i<size; i++)
+		shittyCRC ^= data[i];
+	return shittyCRC;
+}
 
 
 /* Read chuck of data
@@ -82,6 +88,7 @@ read_code_t RS485Soft::readChunk()
 	read_fsm_state_t state = FSM_WAIT_H0;
 	read_code_t out = ERROR_UNKNOWN;
 	size = 0;
+	uint8_t localSize = 0;
 
 	#ifdef RS485_DEBUG
 	#ifdef RS485_DEBUG_TIMESTAMP
@@ -125,7 +132,7 @@ read_code_t RS485Soft::readChunk()
 				state = FSM_WAIT_H1; // OK, next state
 				_timeStamp();
 			}
-			if (b == ASCII_NUL) // Ignore first NULL bytes
+			if (b == ASCII_NUL) // Ignore NULL bytes
 			{
 				out = NULL_PACKET;
 				state = FSM_END;
@@ -135,7 +142,7 @@ read_code_t RS485Soft::readChunk()
 		case FSM_WAIT_H1:
 			if (b == ASCII_STX) // Second byte header
 			{
-				state = FSM_PACKET; // OK, next state
+				state = FSM_WAIT_LEN; // OK, next state
 				_timeStamp();
 			}
 			else if (b != ASCII_EMPTY_VALUE)
@@ -144,40 +151,57 @@ read_code_t RS485Soft::readChunk()
 				out = ERROR_INCOMPLETE_OR_BROKEN;
 			}
 			break;
-
-		case FSM_PACKET:
-			switch (b)
+		
+		case FSM_WAIT_LEN:
+			if(b != ASCII_EMPTY_VALUE)
 			{
-			case ASCII_EMPTY_VALUE:
-			break;
-			case ASCII_ETX:
-			{
-				if (size == 0)
+				if(b > RS485_SOFT_BUFFER_SIZE)
 				{
-					out = ERROR_EMPTY;
+					out = ERROR_OVERFLOW;
 					state = FSM_END;
 				}
 				else
 				{
 					_timeStamp();
-					state = FSM_WAIT_F1;
+					size = b;
+					state = FSM_PACKET;
 				}
 			}
 			break;
-			case ASCII_ETB:
+
+		case FSM_PACKET:
+			switch (b)
 			{
-				state = FSM_END;
-				out = ERROR_INCOMPLETE_OR_BROKEN;
-			}
-			break;
+			case ASCII_EMPTY_VALUE:
+				break;
+			case ASCII_ETX:
+				{
+					if (localSize != size)
+					{
+						out = ERROR_INCOMPLETE_OR_BROKEN;
+						state = FSM_END;
+					}
+					else
+					{
+						_timeStamp();
+						state = FSM_WAIT_F1;
+					}
+				}
+				break;
+			case ASCII_ETB:
+				{
+					state = FSM_END;
+					out = ERROR_INCOMPLETE_OR_BROKEN;
+				}
+				break;
 			default:
-				if (size < RS485_SOFT_BUFFER_SIZE)
+				if (localSize < size)
 				{
 					_timeStamp();
-					buffer[size] = b;
-					size++;
+					buffer[localSize] = b;
+					localSize++;
 				}
-				else
+				else // packet completed
 				{
 					state = FSM_END;
 					out = ERROR_OVERFLOW;
@@ -189,17 +213,32 @@ read_code_t RS485Soft::readChunk()
 		case FSM_WAIT_F1:
 			if (b == ASCII_ETB)
 			{
-				state = FSM_END; // OK
-				out = NEW_PACKET;	 // OK Packet Complete!
-				// flush
-				delay(10);
-				read();
-				read();
+				state = FSM_WAIT_CRC; // OK
+				_timeStamp();
 			}
 			else if (b != ASCII_EMPTY_VALUE)
 			{
 				state = FSM_END;
 				out = ERROR_INCOMPLETE_OR_BROKEN;
+			}
+			break;
+
+		case FSM_WAIT_CRC:
+			if(b != ASCII_EMPTY_VALUE)
+			{
+				if(b != _getShitty8BitCRC(buffer, size))
+				{
+					out = ERROR_CRC_MISMATCH;
+				}
+				else
+				{
+					out = NEW_PACKET;	 // OK Packet Complete!
+				}
+				state = FSM_END			
+				// flush
+				delay(10);
+				read();
+				read();
 			}
 			break;
 
