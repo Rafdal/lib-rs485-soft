@@ -27,6 +27,7 @@
 #define MASTER 1
 #define SLAVE 2
 
+#error THIS DOESNT WORK
 
 SoftwareSerial serial(RXpin, TXpin);
 RS485Soft rs485(serial, RXpin, TXpin, controlPin);
