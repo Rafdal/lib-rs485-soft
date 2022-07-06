@@ -166,12 +166,12 @@ bool RS485Soft::readPacket(RSPacket& packet)
 	switch (out)
 	{
 	case ERROR_TIMEOUT:
-		Serial.print("ERROR_TIMEOUT: timeout of (ms) ");
+		Serial.print(F("ERROR_TIMEOUT: timeout of (ms) "));
 		Serial.println(millis() - timestamp);
 		break;
 
 	case ERROR_INCOMPLETE_OR_BROKEN:
-		Serial.print("ERROR_INCOMPLETE_OR_BROKEN - Last state:");
+		Serial.print(F("ERROR_INCOMPLETE_OR_BROKEN - Last state:"));
 		Serial.println(last_state);
 		break;
 

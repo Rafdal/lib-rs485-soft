@@ -97,7 +97,7 @@ void RSPacket::print()
 			break;
 		}
 	}
-	Serial.print("\"\nbytes: {");
+	Serial.print(F("\"\nbytes: {"));
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
 	{
 		Serial.print((int)(data[i]));
