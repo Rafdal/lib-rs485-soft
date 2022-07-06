@@ -9,7 +9,7 @@
 #include "ASCIIDefs.h"
 #include <Arduino.h>
 #include <SoftwareSerial.h>
-#include "RS485Packet.h"
+#include "RSPacket.h"
 
 // readChunk() FSM states
 enum RS485State
@@ -24,8 +24,6 @@ enum RS485State
 };
 
 
-// readChunk() status codes
-
 class RS485Soft : public SoftwareSerial
 {
 public:
@@ -36,8 +34,8 @@ public:
 	virtual int available();
 
 	// packet handling
-	bool readPacket(RS485Packet& packet); // read and save data
-	void send(RS485Packet& packet);
+	bool readPacket(RSPacket& packet); // read and save data
+	void send(RSPacket& packet);
 
 private:
 	void txMode();

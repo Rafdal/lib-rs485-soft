@@ -13,7 +13,7 @@ RS485Soft::~RS485Soft()
 	SoftwareSerial::end();
 }
 
-void RS485Soft::send(RS485Packet& packet)
+void RS485Soft::send(RSPacket& packet)
 {
 	txMode();
 
@@ -36,7 +36,10 @@ void RS485Soft::_timeStamp()
 	timestamp = millis();
 }
 
-/* Watch for timeout
+
+/*
+ * @brief Watch for timeout
+ * 
  * @retval 0 Not timed out
  * @retval 1 Time Out!
  */
@@ -45,7 +48,7 @@ uint8_t RS485Soft::_timedOut()
 	return (millis() - timestamp) > timeout;
 }
 
-bool RS485Soft::readPacket(RS485Packet& packet)
+bool RS485Soft::readPacket(RSPacket& packet)
 {
 	#ifdef RS485_DEBUG
 	#ifdef RS485_DEBUG_TIMESTAMP
@@ -192,7 +195,6 @@ bool RS485Soft::readPacket(RS485Packet& packet)
 void RS485Soft::begin(long baudrate)
 {
 	SoftwareSerial::begin(baudrate);
-	this->timeout = timeout;
 	pinMode(txControl, OUTPUT);
 }
 

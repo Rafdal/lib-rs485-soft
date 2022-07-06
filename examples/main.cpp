@@ -1,6 +1,5 @@
 #include <Arduino.h>
 
-#include <SoftwareSerial.h>
 #include <RS485Soft.h>
 
 /* 
@@ -27,10 +26,8 @@
 #define MASTER 1
 #define SLAVE 2
 
-#error THIS DOESNT WORK
 
-SoftwareSerial serial(RXpin, TXpin);
-RS485Soft rs485(serial, RXpin, TXpin, controlPin);
+RS485Soft rs485(RXpin, TXpin, controlPin);
 
 unsigned long lastMs;
 
@@ -51,40 +48,46 @@ void loop()
 	#if MODE == MASTER
 	if(millis() - lastMs > SEND_INTERVAL)
 	{
+		RSPacket packet;
+		packet.load("Hello there!");
+		rs485.send(packet);
+
 		Serial.println("Sending msg");
-		rs485.sendChunk("t");
 		lastMs = millis();
 	}
 	
 
 	if(rs485.available())
 	{
-		if(rs485.readChunk() == NEW_PACKET)
+		RSPacket packet;
+		if(rs485.readPacket(packet))
 		{
 			Serial.print("Received: ");
-			rs485.printChunk();
+			packet.print();
 		}
-		else if (rs485.error())
+		else
 		{
 			Serial.print("Error reading chunk code: ");
-			Serial.println( rs485.error() );
+			Serial.println( packet.error );
 		}
 	}
 	#elif MODE == SLAVE
 	if(rs485.available())
 	{
-		if(rs485.readChunk() == NEW_PACKET)
+		RSPacket packet;
+		if(rs485.readPacket(packet))
 		{
-			if(rs485.chunkData(0) == 't')
+			if(packet.search("t"))
 			{
-				Serial.println("Received 't', sending echo");
-				rs485.sendChunk("echo!");
+				Serial.println("Found 't', sending echo");
+				packet.load("echo!");
+				rs485.send(packet);
 			}
 		}
-		else if (rs485.error())
+		else
 		{
 			Serial.print("Error reading chunk code: ");
-			Serial.println( rs485.error() );
+			Serial.println( packet.error );
 		}
 	}
 	#endif
