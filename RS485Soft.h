@@ -53,6 +53,7 @@ private:
 	void _timeStamp();
 	uint8_t _timedOut();
 	uint8_t errorCode; // last error code
+	uint8_t _getShitty8BitCRC(uint8_t* data, uint8_t size);
 
 };
 
