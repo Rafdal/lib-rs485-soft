@@ -5,6 +5,8 @@ RS485Soft::RS485Soft(uint8_t rxPin, uint8_t txPin, uint8_t txControl) : Software
 	this->rxPin = rxPin;
 	this->txPin = txPin;
 	this->txControl = txControl;
+
+	errorFlag = false;
 }
 
 RS485Soft::~RS485Soft()
@@ -67,6 +69,8 @@ bool RS485Soft::readPacket(RSPacket& packet)
 	_timeStamp();
 	packet.clear();
 
+	errorFlag = true;
+
 	uint8_t i = 0; // size counter
 
 	uint8_t state = FSM_WAIT_H0;
@@ -97,6 +101,7 @@ bool RS485Soft::readPacket(RSPacket& packet)
 					break;
 				case ASCII_NUL: // Ignore first NULL bytes
 					packet.error = NULL_PACKET;
+					errorFlag = false; // NULL packets are not errors!
 					return false;				
 					break;
 				}
@@ -138,6 +143,7 @@ bool RS485Soft::readPacket(RSPacket& packet)
 				{
 					state = FSM_END;
 					packet.error = PACKET_OK;
+					errorFlag = false;
 					delay(10);
 					SoftwareSerial::read();
 					SoftwareSerial::read();
@@ -162,35 +168,9 @@ bool RS485Soft::readPacket(RSPacket& packet)
 		}
 	}
 
-#ifdef RS485_DEBUG
-	switch (out)
-	{
-	case ERROR_TIMEOUT:
-		Serial.print(F("ERROR_TIMEOUT: timeout of (ms) "));
-		Serial.println(millis() - timestamp);
-		break;
-
-	case ERROR_INCOMPLETE_OR_BROKEN:
-		Serial.print(F("ERROR_INCOMPLETE_OR_BROKEN - Last state:"));
-		Serial.println(last_state);
-		break;
-
-	default:
-		break;
-	}
-	Serial.print(F("RS485 received bytes: "));
-	for (int i = 0; i < debug_output_count; i++)
-	{
-		char str[5];
-		sprintf(str, "%02X ", debug_output[i]);
-		Serial.print(str);
-	}
-
-	Serial.println("\n");
-#endif
-
 	return false;
 }
+
 
 void RS485Soft::begin(long baudrate)
 {

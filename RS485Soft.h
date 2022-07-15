@@ -24,7 +24,7 @@ enum RS485State
 };
 
 
-class RS485Soft : public SoftwareSerial
+class RS485Soft : private SoftwareSerial
 {
 public:
 	RS485Soft(uint8_t rxPin, uint8_t txPin, uint8_t txControl);
@@ -33,9 +33,17 @@ public:
 	virtual void begin(long speed);
 	virtual int available();
 
-	// packet handling
-	bool readPacket(RSPacket& packet); // read and save data
-	void send(RSPacket& packet);
+	/**
+	 * @brief Read packet from serial buffer
+	 * 
+	 * @param packet 
+	 * @return true = read OK
+	 * @return false = ERROR
+	 */
+	virtual bool readPacket(RSPacket& packet); // read and save data
+	virtual void send(RSPacket& packet);
+
+	virtual bool error();
 
 private:
 	void txMode();
@@ -45,14 +53,19 @@ private:
 	uint8_t txPin;
 	uint8_t txControl; // Half-Duplex direction pin
 
+	bool errorFlag;
+
 	// timeout handling
 	unsigned long timeout = RS485_DEFAULT_TIMEOUT; 	 // timeout in ms
 	unsigned long timestamp;
 	void _timeStamp();
 	uint8_t _timedOut();
-	uint8_t errorCode; // last error code
-	uint8_t _getShitty8BitCRC(uint8_t* data, uint8_t size);
 
 };
+
+inline bool RS485Soft::error()
+{
+	return errorFlag;
+}
 
 #endif

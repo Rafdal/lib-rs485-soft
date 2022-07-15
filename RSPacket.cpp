@@ -30,9 +30,42 @@ RSPacket::RSPacket()
 void RSPacket::clear()
 {
     size = 0;
+	id = 0;
     error = PACKET_EMPTY;
     memset(data, 0, RS485_MAX_DATA_SIZE);
 }
+
+uint8_t RSPacket::pop_back()
+{
+	if(size > 0)
+		return data[--size];
+	return 0;
+}
+
+void RSPacket::push_back(uint8_t byte)
+{
+	if(size < RS485_MAX_DATA_SIZE)
+		data[size++] = byte;
+}
+
+void RSPacket::push_back(uint8_t n, uint8_t array[])
+{
+	if(size + n <= RS485_MAX_DATA_SIZE)
+	{
+		for(int i=0; i<n ; i++)
+			data[size++] = array[i];
+	}
+}
+
+void RSPacket::copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos)
+{
+	if(pos + n <= size)
+	{
+		for(int i=0; i<n; i++)
+			buffer[i] = data[pos + i];
+	}
+}
+
 
 uint8_t RSPacket::hash()
 {

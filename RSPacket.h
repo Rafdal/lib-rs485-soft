@@ -34,6 +34,37 @@ public:
     void load(const char* str); 
 
     /**
+     * @brief Append new byte and increase packet size by 1
+     * 
+     * @param byte 
+     */
+    void push_back(uint8_t byte);
+
+    /**
+     * @brief Append n bytes and increase packet size by n
+     * 
+     * @param n size of array
+     * @param array array of bytes to append
+     */
+    void push_back(uint8_t n, uint8_t array[]);
+
+    /**
+     * @brief Get the last byte and decrease size by 1
+     * 
+     * @return uint8_t last byte
+     */
+    uint8_t pop_back();
+
+    /**
+     * @brief Copy n bytes from starting pos to external buffer
+     * 
+     * @param n amount of bytes to copy
+     * @param buffer buffer with enough size to store copied bytes
+     * @param pos starting pos to copy from
+     */
+    void copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos);
+
+    /**
      * @brief Search str inside message. This is a wrapper of strstr func
      * 
      * @param str string to search
@@ -47,10 +78,13 @@ public:
      */
     uint8_t hash();
 
-    // packet data
+    // packet basic data
 	uint8_t size;
 	uint8_t data[RS485_MAX_DATA_SIZE]; // data chunk
     uint8_t error;
+
+    // networking data
+	uint8_t id; // to / from
 
 private:
 

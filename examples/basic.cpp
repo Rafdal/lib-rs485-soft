@@ -3,7 +3,10 @@
 #include <RS485Soft.h>
 
 /*
- *	 	This is the code of the Master and Slave at the same time, to switch between them
+ * 	BASIC RS485 COMMUNICATION WITHOUT NETWORKING
+ *
+ * 
+ * 	 	This is the code of the Master and Slave at the same time, to switch between them
  * 	 	you have to change the value of #define MODE
  *
  * 		The master sends the packet "t" to the slave every 2 seconds and the slave responds with the packet "echo".
@@ -58,21 +61,17 @@ void loop()
 
 	if (rs485.available())
 	{
-		unsigned long stampUs = millis();
 		RSPacket packet;
 		if (rs485.readPacket(packet))
 		{
 			Serial.print("Received: ");
 			packet.print();
 		}
-		else
+		else if (rs485.error())
 		{
 			Serial.print("Error reading chunk code: ");
 			Serial.println(packet.error);
 		}
-
-		Serial.print("elapsed ms: ");
-		Serial.println(millis() - stampUs);
 	}
 
 #elif MODE == SLAVE
@@ -88,7 +87,7 @@ void loop()
 				rs485.send(packet);
 			}
 		}
-		else
+		else if( rs485.error() )
 		{
 			Serial.print("Error reading chunk code: ");
 			Serial.println(packet.error);
