@@ -38,7 +38,8 @@ void RSNetDevice::run()
     {
         if(millis() - broadcastLastMillis >= broadcastInterval)
         {
-            this->send( broadcastCallback() );
+            RSPacket packet = broadcastCallback();
+            this->send( packet );
 
             broadcastLastMillis = millis();
         }

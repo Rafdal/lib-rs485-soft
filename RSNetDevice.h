@@ -7,7 +7,7 @@
 #define RS485_DEFAULT_BAUDRATE  9600
 
 typedef void (*RSPacketCallback)(RSPacket&);
-typedef RSPacket& (*RSBroadcastCallback)(void);
+typedef RSPacket (*RSBroadcastCallback)(void);
 
 enum ReservedIDs
 {
