@@ -61,6 +61,7 @@ char* RSPacket::search(const char* str)
 
 void RSPacket::print()
 {
+	Serial.print('"');
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
 	{
 		switch (data[i])
@@ -97,7 +98,9 @@ void RSPacket::print()
 			break;
 		}
 	}
-	Serial.print(F("\"\nbytes: {"));
+	Serial.print(F("\"\nbytes["));
+	Serial.print(size);
+	Serial.print(F("] = {"));
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
 	{
 		Serial.print((int)(data[i]));

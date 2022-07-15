@@ -2,12 +2,12 @@
 
 #include <RS485Soft.h>
 
-/* 
+/*
  *	 	This is the code of the Master and Slave at the same time, to switch between them
  * 	 	you have to change the value of #define MODE
- * 
+ *
  * 		The master sends the packet "t" to the slave every 2 seconds and the slave responds with the packet "echo".
- * 
+ *
  *   RS485 Wiring:
  *		RO -> D10
  *		DI -> D11
@@ -15,17 +15,16 @@
  *		RE -> D3
  */
 
-#define MODE SLAVE			// MASTER or SLAVE
-#define SEND_INTERVAL 2000	// milliseconds
+#define MODE MASTER		   // MASTER or SLAVE
+#define SEND_INTERVAL 2000 // milliseconds
 
 // Wiring
-#define RXpin 10		// -> RO pin
-#define TXpin 11		// -> DI pin
-#define controlPin 3	// -> DE and RE pin
+#define RXpin 10	 // -> RO pin
+#define TXpin 11	 // -> DI pin
+#define controlPin 3 // -> DE and RE pin
 
 #define MASTER 1
 #define SLAVE 2
-
 
 RS485Soft rs485(RXpin, TXpin, controlPin);
 
@@ -33,20 +32,21 @@ unsigned long lastMs;
 
 void setup()
 {
-	Serial.begin(9600);
+	Serial.begin(115200);
 	rs485.begin(9600);
 
-	#if MODE == MASTER
+#if MODE == MASTER
 	Serial.println("Testing MASTER!");
-	#elif MODE == SLAVE
+#elif MODE == SLAVE
 	Serial.println("Testing SLAVE!");
-	#endif
+#endif
 }
 
 void loop()
 {
-	#if MODE == MASTER
-	if(millis() - lastMs > SEND_INTERVAL)
+#if MODE == MASTER
+
+	if (millis() - lastMs > SEND_INTERVAL)
 	{
 		RSPacket packet;
 		packet.load("Hello there!");
@@ -55,12 +55,12 @@ void loop()
 		Serial.println("Sending msg");
 		lastMs = millis();
 	}
-	
 
-	if(rs485.available())
+	if (rs485.available())
 	{
+		unsigned long stampUs = millis();
 		RSPacket packet;
-		if(rs485.readPacket(packet))
+		if (rs485.readPacket(packet))
 		{
 			Serial.print("Received: ");
 			packet.print();
@@ -68,16 +68,20 @@ void loop()
 		else
 		{
 			Serial.print("Error reading chunk code: ");
-			Serial.println( packet.error );
+			Serial.println(packet.error);
 		}
+
+		Serial.print("elapsed ms: ");
+		Serial.println(millis() - stampUs);
 	}
-	#elif MODE == SLAVE
-	if(rs485.available())
+
+#elif MODE == SLAVE
+	if (rs485.available())
 	{
 		RSPacket packet;
-		if(rs485.readPacket(packet))
+		if (rs485.readPacket(packet))
 		{
-			if(packet.search("t"))
+			if (packet.search("t"))
 			{
 				Serial.println("Found 't', sending echo");
 				packet.load("echo!");
@@ -87,8 +91,8 @@ void loop()
 		else
 		{
 			Serial.print("Error reading chunk code: ");
-			Serial.println( packet.error );
+			Serial.println(packet.error);
 		}
 	}
-	#endif
+#endif
 }
