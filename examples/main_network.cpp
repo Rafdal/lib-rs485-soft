@@ -18,16 +18,19 @@
  *		RE -> D3
  */
 
-#define MODE MASTER		   // MASTER or SLAVE
+// options
+#define MODE MASTER		   // > set MASTER or SLAVE <
 #define SEND_INTERVAL 2000 // milliseconds
-
-#define MASTER 0
-#define SLAVE 1
 
 // Wiring
 #define RXpin 10	 // -> RO pin
 #define TXpin 11	 // -> DI pin
 #define controlPin 3 // -> DE and RE pin
+
+
+
+#define MASTER 0
+#define SLAVE 1
 
 #if MODE == MASTER
 #define DEVICE_ID	MasterID
@@ -37,42 +40,41 @@
 #define DEVICE_NAME	"Slave"
 #endif
 
+
+
 RSNetDevice device(RXpin, TXpin, controlPin);
-
-unsigned long lastMs;
-
-RSPacket broadcast()
-{
-	RSPacket packet;
-	packet.id = PublicID; // send to everyone
-	packet.load("Hello there!");
-	Serial.println("Broadcasting...");
-	return packet;
-}
 
 void setup()
 {
 	Serial.begin(115200);
-	Serial.println("Testing " DEVICE_NAME);
+	Serial.println(F("Testing " DEVICE_NAME));
 
 	device.setup(DEVICE_ID, DEVICE_NAME);
+
 
 #if MODE == MASTER
 
 	device.onPacket([](RSPacket& packet){
-		Serial.print("Received Packet: ");
+		Serial.println(F("@ Received Packet"));
 		packet.print();
 	});
-
-	device.broadcastEvery(broadcast, SEND_INTERVAL);
+	
+	// set an automated packet broadcasting every <SEND_INTERVAL> ms
+	device.broadcastEvery(SEND_INTERVAL, [](RSPacket& packet){
+		packet.id = PublicID; // send to everyone
+		packet.push_back('t');
+		Serial.println(F("\nBroadcasting..."));
+	});
 
 #elif MODE == SLAVE
 
 	device.onPacket([](RSPacket& packet){
+		Serial.println(F("@ Received Packet"));
 		packet.print();
+
 		if (packet.search("t"))
 		{
-			Serial.println("Found 't', sending echo");
+			Serial.println(F("Found 't', sending echo"));
 			packet.load("echo!");
 			device.send(packet); // no need to change address since id = sender
 		}

@@ -6,12 +6,11 @@
 
 #define RS485_DEFAULT_TIMEOUT 50 // ms
 
-#include "ASCIIDefs.h"
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "RSPacket.h"
 
-// readChunk() FSM states
+// FSM states
 enum RS485State
 {
 	FSM_WAIT_H0, // Wait for first byte header
@@ -28,7 +27,7 @@ class RS485Soft : private SoftwareSerial
 {
 public:
 	RS485Soft(uint8_t rxPin, uint8_t txPin, uint8_t txControl);
-	~RS485Soft();
+	virtual ~RS485Soft();
 
 	virtual void begin(long speed);
 	virtual int available();
@@ -58,14 +57,44 @@ private:
 	// timeout handling
 	unsigned long timeout = RS485_DEFAULT_TIMEOUT; 	 // timeout in ms
 	unsigned long timestamp;
-	void _timeStamp();
-	uint8_t _timedOut();
+	void timeStamp(); // update timestamp
+
+	/*
+	* @brief Watch for timeout
+	* 
+	* @retval 0 Not timed out
+	* @retval 1 Time Out!
+	*/
+	uint8_t timedOut();
 
 };
+
+// Inlined methods
 
 inline bool RS485Soft::error()
 {
 	return errorFlag;
+}
+
+inline void RS485Soft::txMode()
+{
+	digitalWrite(txControl, HIGH);
+}
+
+inline void RS485Soft::rxMode()
+{
+	digitalWrite(txControl, LOW);
+}
+
+
+inline void RS485Soft::timeStamp()
+{
+	timestamp = millis();
+}
+
+inline uint8_t RS485Soft::timedOut()
+{
+	return (millis() - timestamp) > timeout;
 }
 
 #endif

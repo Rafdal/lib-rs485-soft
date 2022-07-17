@@ -2,8 +2,9 @@
 #define RSPacket_H
 
 #include <Arduino.h>
+#include <vector>
 
-#define RS485_MAX_DATA_SIZE 32
+#define RS485_MAX_DATA_SIZE 48
 
 enum PacketError
 {
@@ -14,7 +15,15 @@ enum PacketError
     ERROR_HASH_MISMATCH,
 	ERROR_SIZE_OVERFLOW,
 	PACKET_EMPTY,
+    BOUNDING_ERROR,
 	ERROR_UNKNOWN,
+};
+
+enum ReservedIDs
+{
+    IDNotSet = 253,
+    PublicID,
+    MasterID,
 };
 
 class RSPacket
@@ -56,13 +65,26 @@ public:
     uint8_t pop_back();
 
     /**
+     * @brief Get the first byte and decrease size by 1
+     * 
+     * @return uint8_t first byte
+     */
+    uint8_t pop_front();
+
+    /**
+     * @brief Erase n bytes of the front
+     * @param n amount of bytes to erase
+     */
+    void erase_front(uint8_t n);
+
+    /**
      * @brief Copy n bytes from starting pos to external buffer
      * 
      * @param n amount of bytes to copy
      * @param buffer buffer with enough size to store copied bytes
-     * @param pos starting pos to copy from
+     * @param pos starting pos to copy from (optional)
      */
-    void copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos);
+    void copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos = 0);
 
     /**
      * @brief Search str inside message. This is a wrapper of strstr func
@@ -83,11 +105,10 @@ public:
 	uint8_t data[RS485_MAX_DATA_SIZE]; // data chunk
     uint8_t error;
 
-    // networking data
-	uint8_t id; // to / from
+    uint8_t id; // to / from
 
 private:
-
 };
+
 
 #endif

@@ -15,14 +15,28 @@ RS485Soft::~RS485Soft()
 	SoftwareSerial::end();
 }
 
+
+void RS485Soft::begin(long baudrate)
+{
+	SoftwareSerial::begin(baudrate);
+	pinMode(txControl, OUTPUT);
+}
+
+int RS485Soft::available()
+{
+	rxMode();
+	return SoftwareSerial::available();
+}
+
+
 void RS485Soft::send(RSPacket& packet)
 {
 	txMode();
 
-	// Sync Header
-	write(ASCII_NUL);
-	write(ASCII_SOH);
-	write(ASCII_STX);
+	// Sync Header (Literally "HI")
+	write((uint8_t)0); // start with a null packet
+	write('H');
+	write('I');
 	write(packet.size);
 
 	for (int i = 0; i < packet.size && i < RS485_MAX_DATA_SIZE; i++)
@@ -30,56 +44,40 @@ void RS485Soft::send(RSPacket& packet)
 
 	// Footer
 	write(packet.hash());
-	write(ASCII_NUL);
+	write((uint8_t)0); // end with a null packet
 }
 
-void RS485Soft::_timeStamp()
-{
-	timestamp = millis();
-}
-
-
-/*
- * @brief Watch for timeout
- * 
- * @retval 0 Not timed out
- * @retval 1 Time Out!
- */
-uint8_t RS485Soft::_timedOut()
-{
-	return (millis() - timestamp) > timeout;
-}
 
 bool RS485Soft::readPacket(RSPacket& packet)
 {
 	#ifdef RS485_DEBUG
 	#ifdef RS485_DEBUG_TIMESTAMP
-	Serial.print("t: ");
+	Serial.print("\n@ packet (t = ");
 	Serial.print(millis() - timestamp);
-	Serial.print("\t\t");
+	Serial.print(")\t\t");
 	#endif
 
-	uint8_t last_state = 0;
 	uint8_t debug_output[256];
 	uint8_t debug_output_count = 0;
 
 	#endif
 
 	rxMode();
-	_timeStamp();
+	timeStamp();
 	packet.clear();
 
 	errorFlag = true;
 
-	uint8_t i = 0; // size counter
+	uint8_t sizeCounter = 0;
 
 	uint8_t state = FSM_WAIT_H0;
+	bool packetComplete = false;
 	while (state != FSM_END)
 	{
-		if (_timedOut())
+		if (timedOut())
 		{
 			packet.error = ERROR_TIMEOUT;
-			return false;
+			state = FSM_END;
 		}
 
 		if (SoftwareSerial::available())
@@ -95,28 +93,28 @@ bool RS485Soft::readPacket(RSPacket& packet)
 			case FSM_WAIT_H0: 
 				switch (b)
 				{
-				case ASCII_SOH: // First byte header
-					_timeStamp();
+				case 'H': // First byte header
+					timeStamp();
 					state = FSM_WAIT_H1; // OK, next state
 					break;
-				case ASCII_NUL: // Ignore first NULL bytes
+				case 0: // Ignore first NULL bytes
 					packet.error = NULL_PACKET;
 					errorFlag = false; // NULL packets are not errors!
-					return false;				
+					state = FSM_END;			
 					break;
 				}
 				break;
 
 			case FSM_WAIT_H1:
-				if(b == ASCII_STX) // Second byte header
+				if(b == 'I') // Second byte header
 				{
-					_timeStamp();
+					timeStamp();
 					state = FSM_SIZE; // OK, next state
 				}
 				else
 				{
 					packet.error = ERROR_HEADER_BROKEN;
-					return false;
+					state = FSM_END;
 				}
 				break;
 
@@ -127,13 +125,13 @@ bool RS485Soft::readPacket(RSPacket& packet)
 				else
 				{
 					packet.error = ERROR_SIZE_OVERFLOW;
-					return false;
+					state = FSM_END;
 				}
 				break;
 
 			case FSM_PACKET:
-				packet.data[i++] = b;
-				if( i >= packet.size || i >= RS485_MAX_DATA_SIZE)
+				packet.data[sizeCounter++] = b;
+				if( sizeCounter >= packet.size || sizeCounter >= RS485_MAX_DATA_SIZE)
 					state = FSM_HASH;
 
 				break;
@@ -147,12 +145,12 @@ bool RS485Soft::readPacket(RSPacket& packet)
 					delay(10);
 					SoftwareSerial::read();
 					SoftwareSerial::read();
-					return true;
+					packetComplete = true;
 				}
 				else
 				{
 					packet.error = ERROR_HASH_MISMATCH;
-					return false;
+					state = FSM_END;
 				}
 				break;
 
@@ -162,34 +160,51 @@ bool RS485Soft::readPacket(RSPacket& packet)
 			default:
 				packet.error = ERROR_UNKNOWN;
 				state = FSM_END;
-				return false;
 				break;
 			}
 		}
 	}
 
-	return false;
-}
+	#ifdef RS485_DEBUG
+	switch (packet.error)
+	{
+	case PACKET_OK:
+		break;
+	case ERROR_TIMEOUT:
+		Serial.print(F("ERROR_TIMEOUT: timeout of (ms) "));
+		Serial.println(millis() - timestamp);
+		break;
 
+	case NULL_PACKET:
+		Serial.print(F("NULL_PACKET: timestamp = "));
+		Serial.println(millis() - timestamp);
+		break;
 
-void RS485Soft::begin(long baudrate)
-{
-	SoftwareSerial::begin(baudrate);
-	pinMode(txControl, OUTPUT);
-}
+	case ERROR_HEADER_BROKEN:
+		Serial.print(F("ERROR_HEADER_BROKEN"));
+		break;
 
-void RS485Soft::txMode()
-{
-	digitalWrite(txControl, HIGH);
-}
+	case ERROR_HASH_MISMATCH:
+		Serial.print(F("ERROR_HASH_MISMATCH"));
+		break;
 
-void RS485Soft::rxMode()
-{
-	digitalWrite(txControl, LOW);
-}
+	default:
+		Serial.print(F("ERROR_CODE: "));
+		Serial.println(packet.error);
+		break;
+	}
+	Serial.print(F("RS485 received bytes: "));
+	for (int i = 0; i < debug_output_count; i++)
+	{
+		char str[5];
+		sprintf(str, "%02X ", debug_output[i]);
+		Serial.print(str);
+	}
+	Serial.println();
+	packet.print();
 
-int RS485Soft::available()
-{
-	rxMode();
-	return SoftwareSerial::available();
+	Serial.println("\n");
+	#endif
+
+	return packetComplete;
 }

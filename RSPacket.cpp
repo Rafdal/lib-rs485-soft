@@ -1,4 +1,5 @@
 #include "RSPacket.h"
+#include "RSNetDevice.h"
 
 // Used for the hash function
 const uint8_t shuffledTable[] PROGMEM = {
@@ -30,8 +31,8 @@ RSPacket::RSPacket()
 void RSPacket::clear()
 {
     size = 0;
-	id = 0;
-    error = PACKET_EMPTY;
+	id = IDNotSet;
+    error = PACKET_OK;
     memset(data, 0, RS485_MAX_DATA_SIZE);
 }
 
@@ -39,13 +40,45 @@ uint8_t RSPacket::pop_back()
 {
 	if(size > 0)
 		return data[--size];
+
+	error = BOUNDING_ERROR;
 	return 0;
+}
+
+uint8_t RSPacket::pop_front()
+{
+	if(size > 0)
+	{
+		size--;
+		uint8_t out = data[0];
+		for(int i=0; i < size; i++)
+			data[i] = data[i + 1];
+
+		return out;
+	}
+	error = BOUNDING_ERROR;
+	return 0;
+}
+
+void RSPacket::erase_front(uint8_t n)
+{
+	if(size >= n)
+	{
+		size = size - n;
+		for(int i=0; i < size; i++)
+			data[i] = data[i + n];
+	}
+	error = BOUNDING_ERROR;
 }
 
 void RSPacket::push_back(uint8_t byte)
 {
 	if(size < RS485_MAX_DATA_SIZE)
+	{
 		data[size++] = byte;
+		return;
+	}
+	error = BOUNDING_ERROR;
 }
 
 void RSPacket::push_back(uint8_t n, uint8_t array[])
@@ -54,7 +87,9 @@ void RSPacket::push_back(uint8_t n, uint8_t array[])
 	{
 		for(int i=0; i<n ; i++)
 			data[size++] = array[i];
+		return;
 	}
+	error = BOUNDING_ERROR;
 }
 
 void RSPacket::copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos)
@@ -63,7 +98,9 @@ void RSPacket::copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos)
 	{
 		for(int i=0; i<n; i++)
 			buffer[i] = data[pos + i];
+		return;
 	}
+	error = BOUNDING_ERROR;
 }
 
 
@@ -84,7 +121,9 @@ void RSPacket::load(const char* str)
 		size = strlen(str);
         for(int i=0; i < size; i++)
             data[i] = (uint8_t) str[i];   // dont copy the NULL terminator
-    }
+		return;
+	}
+	error = BOUNDING_ERROR;
 }
 
 char* RSPacket::search(const char* str)
@@ -94,7 +133,7 @@ char* RSPacket::search(const char* str)
 
 void RSPacket::print()
 {
-	Serial.print('"');
+	Serial.print(F("content = \""));
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
 	{
 		switch (data[i])
@@ -136,8 +175,8 @@ void RSPacket::print()
 	Serial.print(F("] = {"));
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
 	{
-		Serial.print((int)(data[i]));
-		Serial.print(",");
+		Serial.print((int)data[i]);
+		Serial.print(',');
 	}
 	Serial.println("}");
 }

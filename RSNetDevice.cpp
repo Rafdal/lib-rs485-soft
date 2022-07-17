@@ -1,13 +1,15 @@
 #include "RSNetDevice.h"
 
 
-RSNetDevice::RSNetDevice(uint8_t rxPin, uint8_t txPin, uint8_t txControl) : RS485Soft(rxPin, txPin, txControl)
+RSNetDevice::RSNetDevice(uint8_t rxPin, uint8_t txPin, uint8_t txControl)
 {
+    rs485 = new RS485Soft(rxPin, txPin, txControl); // I dont want to use inheritance here
     localID = IDNotSet;
 }
 
 RSNetDevice::~RSNetDevice()
 {
+    delete rs485;
 }
 
 void RSNetDevice::send(RSPacket& packet)
@@ -22,49 +24,64 @@ void RSNetDevice::send(RSPacket& packet)
     // Network packet data structure: (PAYLOAD)[from][to]
     packet.push_back(localID); // from
     packet.push_back(packet.id); // to
-    RS485Soft::send(packet);
+    rs485->send(packet);
 }
 
 void RSNetDevice::run()
 {
-    if(localID == IDNotSet)
+    if (localID == IDNotSet)
     {
         Serial.println(F("RSNetDevice ID not initialized!"));
         _delay_ms(500);
         return;
     }
 
-    if( broadcastCallback != NULL)
-    {
-        if(millis() - broadcastLastMillis >= broadcastInterval)
-        {
-            RSPacket packet = broadcastCallback();
-            this->send( packet );
+    runBroadcastCallback();
 
-            broadcastLastMillis = millis();
+    if (rs485->available())
+    {
+        if (onPacketCallback != NULL)
+        {
+            RSPacket packet;
+            if(readAndParsePacket(packet))
+                onPacketCallback(packet);
         }
     }
+}
 
-    if( available() )
+bool RSNetDevice::readAndParsePacket(RSPacket& packet)
+{
+    if (rs485->readPacket(packet))
     {
-        RSPacket packet;
-        if( readPacket(packet) )
+        // Network packet data structure = [PAYLOAD][from][to]
+        uint8_t to = packet.pop_back();
+
+        if (to == localID || to == PublicID) // It's for me?
         {
-            // Network packet data structure = [PAYLOAD][from][to]
-            uint8_t to = packet.pop_back();
-
-            if(to == localID || to == PublicID) // It's for me?
-            {
-                packet.id = packet.pop_back(); // sender ID
-
-                if(onPacketCallback != NULL)
-                    onPacketCallback(packet);
-            }
+            packet.id = packet.pop_back(); // sender ID
+            return true; // OK!
         }
-        else if( error() )
+    }
+    else if (rs485->error())
+    {
+        Serial.print(F("RS485 Error code "));
+        Serial.println(packet.error);
+    }
+
+    return false;
+}
+
+void RSNetDevice::runBroadcastCallback()
+{
+    if (broadcastCallback != NULL)
+    {
+        if (millis() - broadcastLastMillis >= broadcastInterval)
         {
-            Serial.print(F("RS485 Error code "));
-            Serial.println(packet.error);
+            RSPacket packet;
+            broadcastCallback(packet);
+            send(packet);
+
+            broadcastLastMillis = millis();
         }
     }
 }
