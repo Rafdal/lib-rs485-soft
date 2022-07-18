@@ -20,7 +20,7 @@ With 3 [abstraction layers](https://en.wikipedia.org/wiki/Abstraction_layer):
 - Device connectivity functions
 
 ## What is RS485?
-[RS485](https://en.wikipedia.org/wiki/RS-485) is a TIA/EIA hardware standard for wired communications apt for long distances and noisy industrial enviroments
+[RS485](https://en.wikipedia.org/wiki/RS-485) is a TIA/EIA hardware standard for wired communications over for long distances and noisy industrial enviroments
 
 ## Wiring
 Is recommended to use PWM digital pins
