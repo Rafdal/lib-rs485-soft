@@ -22,14 +22,23 @@ enum RS485State
 	FSM_END,     // Stop FSM
 };
 
-
 class RS485Soft : private SoftwareSerial
 {
 public:
 	RS485Soft(uint8_t rxPin, uint8_t txPin, uint8_t txControl);
 	virtual ~RS485Soft();
 
+	/**
+	 * @brief Begin communication with the RS485 module via Software Serial
+	 * 
+	 * @param speed baudrate
+	 */
 	virtual void begin(long speed);
+
+	/**
+	 * @brief Check if we have new incoming bytes
+	 * @return int >0 if available
+	 */
 	virtual int available();
 
 	/**
@@ -37,12 +46,25 @@ public:
 	 * 
 	 * @param packet 
 	 * @retval true = read OK
-	 * @retval false = ERROR
+	 * @retval false = ERROR or NULL packet
 	 */
-	virtual bool readPacket(RSPacket& packet); // read and save data
+	virtual bool readPacket(RSPacket& packet);
+
+	/**
+	 * @brief Check for true error
+	 * 
+	 * @retval true ERROR
+	 * @retval false Not an error (NULL packet) or OK
+	 */
+	virtual bool error();
+
+	/**
+	 * @brief Send a packet via RS485 module
+	 * 
+	 * @param packet RSPacket with <data> and <size>
+	 */
 	virtual void send(RSPacket& packet);
 
-	virtual bool error();
 
 private:
 	void txMode();

@@ -47,7 +47,7 @@ void RSSlave::run()
         return;
     }
 
-    runBroadcastCallback();
+    runIntervals();
 
     if (rs485->available())
     {

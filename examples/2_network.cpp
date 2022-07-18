@@ -41,42 +41,44 @@
 #endif
 
 
-
 RSNetDevice device(RXpin, TXpin, controlPin);
+
 
 void setup()
 {
 	Serial.begin(115200);
 	Serial.println(F("Testing " DEVICE_NAME));
 
-	device.setup(DEVICE_ID, DEVICE_NAME);
+	device.begin(DEVICE_ID, DEVICE_NAME);
 
 
 #if MODE == MASTER
 
 	device.onPacket([](RSPacket& packet){
-		Serial.println(F("@ Received Packet"));
+		Serial.println(F("Received packet"));
 		packet.print();
 	});
 	
-	// set an automated packet broadcasting every <SEND_INTERVAL> ms
-	device.broadcastEvery(SEND_INTERVAL, [](RSPacket& packet){
+	// set an automated packet broadcasting every SEND_INTERVAL ms
+	device.setInterval(SEND_INTERVAL, [](){
+		RSPacket packet;
 		packet.id = PublicID; // send to everyone
 		packet.push_back('t');
 		Serial.println(F("\nBroadcasting..."));
+		device.send(packet);
 	});
 
 #elif MODE == SLAVE
 
 	device.onPacket([](RSPacket& packet){
-		Serial.println(F("@ Received Packet"));
+		Serial.println(F("Received Packet"));
 		packet.print();
 
 		if (packet.search("t"))
 		{
 			Serial.println(F("Found 't', sending echo"));
 			packet.load("echo!");
-			device.send(packet); // no need to change address since id = sender
+			device.send(packet); // no need to change recipient address because id = previous sender
 		}
 	});
 

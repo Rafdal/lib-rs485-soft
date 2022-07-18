@@ -16,7 +16,7 @@ void RSNetDevice::send(RSPacket& packet)
 {
     if(packet.id == IDNotSet)
     {
-        Serial.println(F("RSPacket receiver not set!"));
+        Serial.println(F("RSPacket recipient ID not set!"));
         return;
     }
 
@@ -43,7 +43,7 @@ void RSNetDevice::run()
         return;
     }
 
-    runBroadcastCallback();
+    runIntervals();
 
     if (rs485->available())
     {
@@ -78,17 +78,15 @@ bool RSNetDevice::readAndParsePacket(RSPacket& packet)
     return false;
 }
 
-void RSNetDevice::runBroadcastCallback()
+void RSNetDevice::runIntervals()
 {
-    if (broadcastCallback != NULL)
+    unsigned long ms = millis();
+    for(auto& i : intervals)
     {
-        if (millis() - broadcastLastMillis >= broadcastInterval)
+        if(ms - i.lastMs >= i.interval)
         {
-            RSPacket packet;
-            broadcastCallback(packet);
-            send(packet);
-
-            broadcastLastMillis = millis();
+            i.callback();
+            i.lastMs = ms;
         }
     }
 }

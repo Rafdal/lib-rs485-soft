@@ -8,6 +8,34 @@ RSMaster::~RSMaster()
 {
 }
 
+struct TopicRequest
+{
+    uint8_t deviceID;
+    char* topic;
+    RSPacketCallback callback;
+    unsigned long timestamp;
+    TopicRequest() : deviceID(IDNotSet), topic(NULL), callback(NULL), timestamp(0) {}
+    TopicRequest(uint8_t id, const char* t, RSPacketCallback c) : deviceID(id), callback(c)
+    {
+        topic = const_cast<char*>(t);
+        timestamp = millis();
+    }
+    bool match(RSPacket& p, char* t)
+    {
+        if(deviceID == p.id && strcmp(topic, t) == 0)
+            return true;
+        return false;
+    }
+};
+
+struct FailedAttemp
+{
+    FailedAttemp() : id(IDNotSet), count(0) {}
+    FailedAttemp(uint8_t id) : id(id), count(0) {} 
+    uint8_t id;
+    uint8_t count;
+};
+
 bool RSMaster::sendTopic(uint8_t deviceID, const char* topic, RSPacket& packet)
 {
     if(deviceID != PublicID && deviceID != MasterID && deviceID != IDNotSet && strlen(topic) <= RS485_MAX_TOPIC_SIZE)
@@ -23,7 +51,7 @@ bool RSMaster::sendTopic(uint8_t deviceID, const char* topic, RSPacket& packet)
     return false;
 }
 
-void RSMaster::requestTopic(uint8_t deviceID, const char *topic, RSPacketCallback callback)
+void RSMaster::requestTopicTo(uint8_t deviceID, const char *topic, RSPacketCallback callback)
 {
     if (callback != NULL && requestList.size() < RSMASTER_MAX_REQUESTS)
     {
@@ -48,11 +76,42 @@ void RSMaster::loopTopics()
         {
             Serial.print(F("Request \""));
             Serial.print((*it).topic);
-            Serial.println(F("\" timed out!"));
+            Serial.print(F("\" to id="));
+            Serial.print((*it).deviceID);
+            Serial.println(F(" timed out!"));
+
+            uint8_t fails = incrementFails( (*it).deviceID );
+            if( fails > RS_MAX_FAILED_ATTEMPS && deviceNotRespondingCallback != NULL)
+                deviceNotRespondingCallback( (*it).deviceID );
+
             requestList.erase(it);
             break;
         }
     }
+}
+
+FailedAttemp* RSMaster::getAttemptListReference(uint8_t id)
+{
+    for(auto& att : failAttempts)
+    {
+        if(att.id == id)
+            return &att;
+    }
+    // if it doesn't exists in the vector
+    failAttempts.push_back(FailedAttemp(id)); // insert it
+    return &(failAttempts.back());
+}
+
+void RSMaster::resetFails(uint8_t id)
+{
+    FailedAttemp* patt = getAttemptListReference(id);
+    patt->count = 0;
+}
+
+uint8_t RSMaster::incrementFails(uint8_t id)
+{
+    FailedAttemp* patt = getAttemptListReference(id);
+    return patt->count++;
 }
 
 void RSMaster::run()
@@ -66,7 +125,7 @@ void RSMaster::run()
 
     if ( !(rs485->available()) )
     {
-        runBroadcastCallback();
+        runIntervals();
 
         loopTopics();
     }
@@ -86,6 +145,7 @@ void RSMaster::run()
                         packet.erase_front(strlen(topic) + 2); // remove topic
 
                         (*it).callback(packet);
+                        resetFails( (*it).deviceID );
                         requestList.erase(it);
                         return;
                     }

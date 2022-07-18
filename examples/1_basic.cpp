@@ -5,11 +5,11 @@
 /*
  * 	BASIC RS485 COMMUNICATION WITHOUT NETWORKING
  *
- * 
  * 	 	This is the code of the Master and Slave at the same time, to switch between them
  * 	 	you have to change the value of #define MODE
  *
- * 		The master sends the packet "t" to the slave every 2 seconds and the slave responds with the packet "echo".
+ * 		The master sends the packet "Hello there!" to the slave every 2 seconds 
+ * 		and the slave responds with the packet "echo!".
  *
  *   RS485 Wiring:
  *		RO -> D10
@@ -80,9 +80,9 @@ void loop()
 		RSPacket packet;
 		if (rs485.readPacket(packet))
 		{
-			if (packet.search("t"))
+			if (packet.search("there"))
 			{
-				Serial.println("Found 't', sending echo");
+				Serial.println("Found \"there\", sending echo");
 				packet.load("echo!");
 				rs485.send(packet);
 			}

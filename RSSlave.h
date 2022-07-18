@@ -38,14 +38,18 @@ public:
     void onTopic(const char* topic, RSPacketCallback callback);
 
     /**
-     * @brief Set a callback for topic-specific packets to be answered
+     * @brief When a topic arrives, read it and answer inside the same callback
      * 
-     * @param topic (c-string) name of the topic to listen for
+     * @param topic (c-string) name of the topic to look for and answer
      * @param callback function which has (RSPacket &) as parameter 
      */
     void onTopicAnswer(const char* topic, RSPacketCallback callback);
 
+    /**
+     * @brief Listen for new packets, execute loops and callbacks (non-blocking)
+     */
     virtual void run();
+
 
 private:
 

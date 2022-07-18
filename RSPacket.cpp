@@ -147,7 +147,7 @@ void RSPacket::load(const char* str)
 	size_t len = strlen(str);
     if( size + len <= RS485_MAX_DATA_SIZE)
     {
-        for(int i=0; i < len; i++)
+        for(size_t i=0; i < len; i++)
             data[size+i] = (uint8_t) str[i];   // dont copy the NULL terminator
 		size += len;
 		return;
@@ -176,7 +176,8 @@ char* RSPacket::search(const char* str)
 
 void RSPacket::print()
 {
-	Serial.print(F("content = \""));
+	Serial.println(F("@ Packet {"));
+	Serial.print(F("\tcontent = \""));
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
 	{
 		switch (data[i])
@@ -213,7 +214,7 @@ void RSPacket::print()
 			break;
 		}
 	}
-	Serial.print(F("\"\nbytes["));
+	Serial.print(F("\"\n\tbytes["));
 	Serial.print(size);
 	Serial.print(F("] = {"));
 	for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++)
@@ -221,7 +222,7 @@ void RSPacket::print()
 		Serial.print((int)data[i]);
 		Serial.print(',');
 	}
-	Serial.println("}");
+	Serial.println(F("}\n}"));
 }
 
 bool RSPacket::getTopic(char buffer[RS485_MAX_TOPIC_SIZE])

@@ -4,50 +4,13 @@
 #include "RSNetDevice.h"
 #include <Arduino.h>
 #include <list>
-#include <vector>
 
 #define RSMASTER_MAX_REQUESTS   8
 #define RS_REQUEST_TIMEOUT      500    // [ms]    
 #define RS_MAX_FAILED_ATTEMPS   4
 
-struct TopicRequest
-{
-    uint8_t deviceID;
-    char* topic;
-    RSPacketCallback callback;
-    unsigned long timestamp;
-    TopicRequest()
-    {
-        deviceID = IDNotSet;
-        topic = NULL;
-        callback = NULL;
-        timestamp = 0;
-    }
-    TopicRequest(uint8_t id, const char* t, RSPacketCallback c)
-    {
-        deviceID = id;
-        topic = const_cast<char*>(t);
-        callback = c;
-        timestamp = millis();
-    }
-    bool match(RSPacket& p, char* t)
-    {
-        if(deviceID == p.id && strcmp(topic, t) == 0)
-            return true;
-        return false;
-    }
-};
-
-struct FailedAttemp
-{
-    FailedAttemp()
-    {
-        id = 0;
-        fails = 0;
-    }
-    uint8_t id;
-    uint8_t fails;
-};
+struct TopicRequest;
+struct FailedAttemp;
 
 class RSMaster : public RSNetDevice
 {
@@ -55,26 +18,67 @@ public:
     RSMaster(uint8_t rxPin, uint8_t txPin, uint8_t txControl);
     ~RSMaster();
 
-    void requestTopic(uint8_t deviceID, const char* topic, RSPacketCallback callback);
-    
-    bool sendTopic(uint8_t deviceID, const char* topic, RSPacket& packet);
-
-    virtual void run();
-
+    /**
+     * @brief Setup and begin device
+     */
     void begin();
 
+    /**
+     * @brief Request a topic to some device and set a callback for the expected response
+     * 
+     * @param deviceID ID of recipient device
+     * @param topic char*
+     * @param callback Function to execute when the response arrives
+     */
+    void requestTopicTo(uint8_t deviceID, const char* topic, RSPacketCallback callback);
+    
+    /**
+     * @brief Send a packet with a specific topic on it
+     * 
+     * @param deviceID recipient device ID
+     * @param topic char*
+     * @param packet packet with payload to send
+     * @retval true = OK 
+     * @retval false = Format ERROR (packet not sent)
+     */
+    bool sendTopic(uint8_t deviceID, const char* topic, RSPacket& packet);
+
+    /**
+     * @brief Set a function to call back when some device is not responding after some tries defined in RS_MAX_FAILED_ATTEMPS
+     * 
+     * @param callback void function(uint8_t deviceID)
+     */
+    void onDeviceNotResponding(void (*callback)(uint8_t deviceID));
+
+    /**
+     * @brief Listen for new packets, execute loops and callbacks (non-blocking)
+     * 
+     */
+    virtual void run();
+
+
 private:
-    using RSNetDevice::setup;
+    using RSNetDevice::begin;
 
     std::list<TopicRequest> requestList;
-    std::vector<
-
     void loopTopics();
+
+    std::list<FailedAttemp> failAttempts;
+    void resetFails(uint8_t id);
+    uint8_t incrementFails(uint8_t id);
+    FailedAttemp* getAttemptListReference(uint8_t id);
+
+    void (*deviceNotRespondingCallback)(uint8_t deviceID) = NULL;
 };
+
+inline void RSMaster::onDeviceNotResponding(void (*callback)(uint8_t))
+{
+    deviceNotRespondingCallback = callback;
+}
 
 inline void RSMaster::begin()
 {
-    RSNetDevice::setup(MasterID, "master");
+    RSNetDevice::begin(MasterID, "master");
 }
 
 
