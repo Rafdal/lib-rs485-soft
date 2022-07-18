@@ -23,6 +23,10 @@ With 3 [abstraction layers](https://en.wikipedia.org/wiki/Abstraction_layer):
 ## What is RS485?
 [RS485](https://en.wikipedia.org/wiki/RS-485) is a TIA/EIA hardware standard for wired communications over long distances and noisy industrial enviroments
 
+## Target boards: 
+- Arduino: UNO, Pro Mini, Nano
+- Espressif: ESP8266 (not tested yet)
+
 ## Wiring
 Is recommended to use PWM digital pins
  * RO -> pinRO
