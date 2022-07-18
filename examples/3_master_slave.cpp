@@ -60,7 +60,7 @@ void setup()
 	// Request topic "test" every SEND_INTERVAL milliseconds
 	device.setInterval(SEND_INTERVAL, [](){
 
-		device.requestTopicTo(2, "test", [](RSPacket& packet){
+		device.requestTopicTo(SLAVE_ID, "test", [](RSPacket& packet){
 			// execute this callback when we receive the answer to the request (async)
 			Serial.println(F("Received \"test\" response!"));
 			packet.print();
