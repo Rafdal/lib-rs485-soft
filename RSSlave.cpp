@@ -8,6 +8,36 @@ RSSlave::~RSSlave()
 {
 }
 
+void RSSlave::addListenTopic(ListenTopic& listen)
+{
+    size_t len = strlen(listen.topic);
+    if(RS485_MAX_TOPIC_SIZE >= len && listen.callback != NULL)
+    {
+        for (unsigned int i = 0; i < len; i++)
+        {
+            if(!isalnum(listen.topic[i]))
+            {
+                Serial.println(F("bad topic"));
+                return; // only alphanumeric topics allowed
+            }
+        }
+
+        listenTopics.push_back(listen);
+    }
+}
+
+void RSSlave::onTopicAnswer(const char* topic, RSPacketCallback callback)
+{
+    ListenTopic listen(topic, callback, true);
+    addListenTopic(listen);
+}
+
+void RSSlave::onTopic(const char* topic, RSPacketCallback callback)
+{
+    ListenTopic listen(topic, callback, false);
+    addListenTopic(listen);
+}
+
 void RSSlave::run()
 {
     if (localID == IDNotSet)
@@ -26,14 +56,29 @@ void RSSlave::run()
         {
             // (1) Look for topics
             char topic[RS485_MAX_TOPIC_SIZE];
-            if(parseTopic(packet, topic))
+            memset(topic, 0, RS485_MAX_TOPIC_SIZE);
+            if(packet.getTopic(topic))
             {
-                if(listenTopics.find(topic) != listenTopics.end())
+                for(auto& t : listenTopics)
                 {
-                    // Execute topic callback
-                    RSPacketCallback topicCallback = listenTopics[topic];
-                    if(topicCallback != NULL) // this should not be null, but you know
-                        topicCallback(packet);
+                    if(strcmp(t.topic, topic) == 0)
+                    {
+                        // Execute topic callback
+                        if(t.callback != NULL) // this should not be null, but you know...
+                        {
+                            packet.erase_front(strlen(topic) + 2); // remove topic
+            
+                            t.callback(packet);
+
+                            if(t.answer)
+                            {
+                                packet.addTopic(topic);
+                                send(packet);
+                            }
+                            return; // ok
+                        }
+                        break;
+                    }
                 }
             }
 
@@ -45,70 +90,3 @@ void RSSlave::run()
 }
 
 
-bool RSSlave::parseTopic(RSPacket& packet, char topic[RS485_MAX_TOPIC_SIZE])
-{
-    // -> topic structure looks like:  "$TOPIC:"
-    // -> RS485_MAX_TOPIC_SIZE is the len of the topic + the NULL terminator which is not in packet
-    if(packet.data[0] == '$')
-    {
-        bool readingTopic = true;
-
-        int tsize = 0; // topic size
-        while(readingTopic)
-        {
-            //                                  +2 for the '$' and ':' characters
-            if((tsize < (RS485_MAX_TOPIC_SIZE - 1)) && (tsize + 2) < packet.size)
-            {
-                char c = packet.data[tsize + 1]; // +1 for the '$'
-                
-                if(isalnum(c))
-                {
-                    topic[tsize++] = c;
-                    if(tsize == (RS485_MAX_TOPIC_SIZE - 1))
-                    {
-                        if(packet.data[tsize + 1] == ':')   // TODO: TEST THIS CASE
-                        {
-                            // Ok 1
-                            topic[tsize] = '\0'; // set null terminator
-                            readingTopic = false;
-                        }
-                        else
-                        {
-                            // error
-                            return false;
-                        }
-                    }
-                }
-                else if(c == ':')
-                {
-                    if(tsize > 0) // TODO: TEST THIS CASE
-                    {
-                        // Ok 2
-                        topic[tsize] = '\0'; // set null terminator
-                        readingTopic = false;
-                    }
-                    else
-                    {
-                        // error topic empty
-                        return false;
-                    }
-                }
-                else
-                {
-                    // error, not an alphanumeric character
-                    return false;
-                }
-            }
-            else
-            {
-                // size error
-                return false;
-            }
-        }        
-        
-        packet.erase_front(tsize + 2);
-        
-        return true;
-    }
-    return false;
-}

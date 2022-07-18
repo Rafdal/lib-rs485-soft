@@ -36,8 +36,8 @@ public:
 	 * @brief Read packet from serial buffer
 	 * 
 	 * @param packet 
-	 * @return true = read OK
-	 * @return false = ERROR
+	 * @retval true = read OK
+	 * @retval false = ERROR
 	 */
 	virtual bool readPacket(RSPacket& packet); // read and save data
 	virtual void send(RSPacket& packet);

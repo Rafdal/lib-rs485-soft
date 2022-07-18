@@ -17,7 +17,14 @@ void RSNetDevice::send(RSPacket& packet)
     if(packet.id == IDNotSet)
     {
         Serial.println(F("RSPacket receiver not set!"));
-        _delay_ms(500);
+        return;
+    }
+
+    if(packet.error != PACKET_OK)
+    {
+        Serial.println(F("RSPacket format ERROR before sending!"));
+        Serial.print(F("packet error code: "));
+        Serial.println(packet.error);
         return;
     }
 
@@ -56,7 +63,7 @@ bool RSNetDevice::readAndParsePacket(RSPacket& packet)
         // Network packet data structure = [PAYLOAD][from][to]
         uint8_t to = packet.pop_back();
 
-        if (to == localID || to == PublicID) // It's for me?
+        if ((to == localID || to == PublicID) && (to != IDNotSet)) // Is it for me?
         {
             packet.id = packet.pop_back(); // sender ID
             return true; // OK!
@@ -64,7 +71,7 @@ bool RSNetDevice::readAndParsePacket(RSPacket& packet)
     }
     else if (rs485->error())
     {
-        Serial.print(F("RS485 Error code "));
+        Serial.print(F("RS485 Read Packet error code "));
         Serial.println(packet.error);
     }
 

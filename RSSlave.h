@@ -2,7 +2,7 @@
 #define RSSLAVE_H
 
 #include "RSNetDevice.h"    // base class
-#include <map>              // ArduinoSTL
+#include <vector>              // ArduinoSTL
 #include <string.h>         // strlen
 
 /**
@@ -10,11 +10,24 @@
  * 
  */
 
+struct ListenTopic
+{
+    bool answer;
+    const char* topic;
+    RSPacketCallback callback;
+    ListenTopic(const char* t, RSPacketCallback c, bool a = false)
+    {
+        topic = t;
+        callback = c;
+        answer = a;
+    }
+};
+
 class RSSlave : public RSNetDevice
 {
 public:
     RSSlave(uint8_t rxPin, uint8_t txPin, uint8_t txControl);
-    ~RSSlave();
+    virtual ~RSSlave();
 
     /**
      * @brief Set a callback for topic-specific packets
@@ -24,36 +37,23 @@ public:
      */
     void onTopic(const char* topic, RSPacketCallback callback);
 
+    /**
+     * @brief Set a callback for topic-specific packets to be answered
+     * 
+     * @param topic (c-string) name of the topic to listen for
+     * @param callback function which has (RSPacket &) as parameter 
+     */
+    void onTopicAnswer(const char* topic, RSPacketCallback callback);
+
     virtual void run();
 
 private:
 
-    /**
-     * @brief Get the topic of the packet if it's in a valid topic format
-     * 
-     * @param packet RSPacket
-     * @param topic external buffer with RS485_MAX_TOPIC_SIZE
-     * @retval true = valid topic
-     * @retval false = invalid topic or not present
-     */
-    bool parseTopic(RSPacket& packet, char topic[RS485_MAX_TOPIC_SIZE]);
+    // I've had problems with the map STL, so I use vector as a shitty workaround
+    std::vector<ListenTopic> listenTopics; 
 
-    std::map<const char*, RSPacketCallback> listenTopics;
+    void addListenTopic(ListenTopic& listenTopic);
 };
-
-inline void RSSlave::onTopic(const char* topic, RSPacketCallback callback)
-{
-    size_t len = strlen(topic);
-    if(RS485_MAX_TOPIC_SIZE >= len && callback != NULL)
-    {
-        for (unsigned int i = 0; i < len; i++)
-        {
-            if(!isalnum(topic[i]))
-                return; // only alphanumeric topics allowed
-        }
-        listenTopics[topic] = callback;
-    }
-}
 
 
 #endif

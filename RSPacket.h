@@ -2,9 +2,11 @@
 #define RSPacket_H
 
 #include <Arduino.h>
-#include <vector>
+#include "pearsonHash.h"
 
 #define RS485_MAX_DATA_SIZE 48
+
+#define RS485_MAX_TOPIC_SIZE 12
 
 enum PacketError
 {
@@ -32,8 +34,32 @@ public:
     RSPacket();
     ~RSPacket(){}
 
+
+    /**
+     * @brief Print packet content data (but not ID)
+     */
     void print();
+
+    /**
+     * @brief Clear packet content data (but not ID)
+     */
     void clear();
+
+    /**
+     * @brief Add a topic to the packet
+     * 
+     * @param topic char*
+     */
+    void addTopic(const char topic[RS485_MAX_TOPIC_SIZE]);
+
+    /**
+     * @brief Get the topic of the packet if it's in a valid topic format
+     * 
+     * @param topic external buffer with RS485_MAX_TOPIC_SIZE
+     * @retval true = valid topic format
+     * @retval false = invalid topic format or not present
+     */
+    bool getTopic(char buffer[RS485_MAX_TOPIC_SIZE]);
 
     /**
      * @brief Load packet with a C-String
@@ -41,6 +67,13 @@ public:
      * @param str NULL terminated string
      */
     void load(const char* str); 
+
+    /**
+     * @brief Load packet with another packet data
+     * 
+     * @param p RSPacket
+     */
+    void load(RSPacket& p); 
 
     /**
      * @brief Append new byte and increase packet size by 1
@@ -56,6 +89,21 @@ public:
      * @param array array of bytes to append
      */
     void push_back(uint8_t n, uint8_t array[]);
+
+    /**
+     * @brief Append new byte and increase packet size by 1
+     * 
+     * @param byte 
+     */
+    void push_front(uint8_t byte);
+
+    /**
+     * @brief Append n bytes and increase packet size by n
+     * 
+     * @param n size of array
+     * @param array array of bytes to append
+     */
+    void push_front(uint8_t n, uint8_t array[]);
 
     /**
      * @brief Get the last byte and decrease size by 1
@@ -100,6 +148,12 @@ public:
      */
     uint8_t hash();
 
+    /**
+     * @brief Get Pearson hash value of the topic
+     * @return uint8_t topic hash value
+     */
+    uint8_t hashTopic();
+
     // packet basic data
 	uint8_t size;
 	uint8_t data[RS485_MAX_DATA_SIZE]; // data chunk
@@ -108,6 +162,7 @@ public:
     uint8_t id; // to / from
 
 private:
+
 };
 
 

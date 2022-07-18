@@ -1,37 +1,38 @@
 #include "RSPacket.h"
 #include "RSNetDevice.h"
 
-// Used for the hash function
-const uint8_t shuffledTable[] PROGMEM = {
-    156, 143, 61, 112, 18, 209, 104, 151, 68, 213, 199, 194, 52, 175, 41, 93,
-    2, 67, 64, 72, 90, 205, 129, 164, 227, 69, 159, 240, 248, 44, 60, 135,
-    84, 217, 114, 200, 49, 198, 86, 97, 254, 160, 122, 110, 145, 98, 65, 33,
-    218, 111, 100, 123, 102, 223, 26, 3, 203, 132, 226, 95, 215, 185, 73, 207,
-    79, 235, 195, 150, 233, 216, 10, 125, 87, 238, 206, 191, 51, 107, 7, 230,
-    196, 172, 126, 221, 224, 162, 255, 173, 239, 222, 96, 25, 204, 131, 174, 193,
-    243, 32, 12, 80, 252, 147, 148, 144, 210, 140, 155, 43, 137, 50, 94, 29,
-    56, 167, 141, 228, 242, 231, 116, 39, 184, 54, 250, 197, 1, 74, 142, 48,
-    180, 247, 214, 118, 237, 21, 17, 241, 89, 31, 75, 78, 63, 42, 47, 15,
-    182, 225, 211, 99, 103, 251, 11, 189, 81, 136, 55, 169, 246, 220, 139, 161,
-    188, 37, 121, 62, 153, 38, 115, 88, 57, 165, 170, 134, 178, 113, 176, 45,
-    168, 22, 5, 201, 27, 117, 19, 82, 186, 181, 70, 249, 146, 158, 163, 187,
-    13, 234, 14, 40, 108, 53, 202, 127, 212, 219, 157, 232, 245, 8, 133, 179,
-    0, 59, 154, 120, 190, 6, 24, 253, 85, 9, 149, 192, 236, 28, 166, 128,
-    83, 36, 208, 119, 130, 66, 152, 124, 183, 91, 16, 20, 244, 77, 105, 35,
-    23, 92, 76, 109, 34, 46, 229, 177, 138, 171, 71, 58, 106, 101, 4, 30,
-};
-
 
 RSPacket::RSPacket()
 {
     clear(); // fresh start
+	id = IDNotSet;
 }
 
+void RSPacket::addTopic(const char topic[RS485_MAX_TOPIC_SIZE])
+{
+    if(strlen(topic) + size <= RS485_MAX_TOPIC_SIZE)
+    {
+        push_front(':');
+        push_front((uint8_t)strlen(topic), (uint8_t*)topic);
+        push_front('$');
+    }
+}
+
+uint8_t RSPacket::hashTopic()
+{
+	char topic[RS485_MAX_TOPIC_SIZE];
+	uint8_t h = 0;
+	if(getTopic(topic))
+	{
+		uint8_t tsize = strlen(topic);
+		h = pearsonHash(tsize, (uint8_t*)topic);
+	}
+	return h;
+}
 
 void RSPacket::clear()
 {
     size = 0;
-	id = IDNotSet;
     error = PACKET_OK;
     memset(data, 0, RS485_MAX_DATA_SIZE);
 }
@@ -43,6 +44,38 @@ uint8_t RSPacket::pop_back()
 
 	error = BOUNDING_ERROR;
 	return 0;
+}
+
+void RSPacket::push_front(uint8_t byte)
+{
+	if(size < RS485_MAX_DATA_SIZE)
+	{
+		// copy all
+		for (int i = size-1; i >= 0; i--)
+			data[i+1] = data[i];
+		
+		data[0] = byte; // push front
+		size++;
+		return;
+	}
+	error = BOUNDING_ERROR;
+}
+
+void RSPacket::push_front(uint8_t n, uint8_t array[])
+{
+	if(size + n <= RS485_MAX_DATA_SIZE)
+	{
+		// copy all
+		for (int i = size-1; i >= 0; i--)
+			data[i+n] = data[i];
+
+		// then push front
+		for (int i = 0; i < n; i++)
+			data[i] = array[i];		
+		size = size + n;
+		return;
+	}
+	error = BOUNDING_ERROR;
 }
 
 uint8_t RSPacket::pop_front()
@@ -67,6 +100,7 @@ void RSPacket::erase_front(uint8_t n)
 		size = size - n;
 		for(int i=0; i < size; i++)
 			data[i] = data[i + n];
+		return;
 	}
 	error = BOUNDING_ERROR;
 }
@@ -103,28 +137,37 @@ void RSPacket::copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos)
 	error = BOUNDING_ERROR;
 }
 
-
 uint8_t RSPacket::hash()
 {
-    // see https://en.wikipedia.org/wiki/Pearson_hashing
-    uint8_t h = 0;
-    for(int i=0; i < size && i < RS485_MAX_DATA_SIZE; i++ )
-        h = pgm_read_byte_near(shuffledTable + (h ^ data[i]));
-
-    return h;
+	return pearsonHash(size, data);
 }
 
 void RSPacket::load(const char* str)
 {
-    if( strlen(str) <= RS485_MAX_DATA_SIZE)
+	size_t len = strlen(str);
+    if( size + len <= RS485_MAX_DATA_SIZE)
     {
-		size = strlen(str);
-        for(int i=0; i < size; i++)
-            data[i] = (uint8_t) str[i];   // dont copy the NULL terminator
+        for(int i=0; i < len; i++)
+            data[size+i] = (uint8_t) str[i];   // dont copy the NULL terminator
+		size += len;
 		return;
 	}
 	error = BOUNDING_ERROR;
 }
+
+void RSPacket::load(RSPacket& p)
+{
+	if( size + p.size <= RS485_MAX_DATA_SIZE)
+    {
+        for(int i=0; i < p.size; i++)
+            data[size+i] = p.data[i];   // dont copy the NULL terminator
+		size += p.size;
+		id = p.id;
+		return;
+	}
+	error = BOUNDING_ERROR;
+}
+
 
 char* RSPacket::search(const char* str)
 {
@@ -179,4 +222,69 @@ void RSPacket::print()
 		Serial.print(',');
 	}
 	Serial.println("}");
+}
+
+bool RSPacket::getTopic(char buffer[RS485_MAX_TOPIC_SIZE])
+{
+	// -> topic structure looks like:  "$TOPIC:"
+    // -> RS485_MAX_TOPIC_SIZE is the len of the topic + the NULL terminator which is not in packet
+    if(data[0] == '$')
+    {
+        bool readingTopic = true;
+
+        int tsize = 0; // topic size
+        while(readingTopic)
+        {
+            //                                  +2 for the '$' and ':' characters
+            if((tsize < (RS485_MAX_TOPIC_SIZE - 1)) && (tsize + 2) < size)
+            {
+                char c = data[tsize + 1]; // +1 for the '$'
+                
+                if(isalnum(c))
+                {
+                    buffer[tsize++] = c;
+                    if(tsize == (RS485_MAX_TOPIC_SIZE - 1))
+                    {
+                        if(data[tsize + 1] == ':')   // TODO: TEST THIS CASE
+                        {
+                            // Ok 1
+                            buffer[tsize] = '\0'; // set null terminator
+                            readingTopic = false;
+                        }
+                        else
+                        {
+                            // error
+                            return false;
+                        }
+                    }
+                }
+                else if(c == ':')
+                {
+                    if(tsize > 0) // TODO: TEST THIS CASE
+                    {
+                        // Ok 2
+                        buffer[tsize] = '\0'; // set null terminator
+                        readingTopic = false;
+                    }
+                    else
+                    {
+                        // error topic empty
+                        return false;
+                    }
+                }
+                else
+                {
+                    // error, not an alphanumeric character
+                    return false;
+                }
+            }
+            else
+            {
+                // size error
+                return false;
+            }
+        }                
+        return true;
+    }
+    return false;
 }
