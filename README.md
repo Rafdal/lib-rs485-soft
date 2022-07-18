@@ -1,5 +1,5 @@
 # lib-rs485-soft
-SoftwareSerial based [RS485](https://github.com/Rafdal/lib-rs485-soft/edit/main/README.md#what-is-rs485) tools for sending and receiving data packets, networking and more!
+SoftwareSerial based [RS485](https://github.com/Rafdal/lib-rs485-soft#what-is-rs485) tools for sending and receiving data packets, networking and more!
 
 With 3 [abstraction layers](https://en.wikipedia.org/wiki/Abstraction_layer):
 
