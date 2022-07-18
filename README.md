@@ -41,4 +41,4 @@ RSSlave slave(RXpin, TXpin, controlPin);`
 For more info about wiring and RS485 module usage, you can read [this doc](https://github.com/Rafdal/lib-rs485-soft/blob/main/MAX485%20Module%205V%20logic%20TTL%20to%20RS-485.pdf)
 
 
-# See the examples folder for a detalied explaination and use cases
+# See the [examples folder](https://github.com/Rafdal/lib-rs485-soft/tree/main/examples) for a detalied explaination and use cases
