@@ -15,10 +15,10 @@ With 3 [abstraction layers](https://en.wikipedia.org/wiki/Abstraction_layer):
 
 ### 3: Master-Slave Layer (RSMaster.h & RSSlave.h)
 - *All the networking and basic features*
+- Packet topics
 - Master and Slave logic roles
-- Advanced callbacks for topic data requests and responses
-- Packet topic-handling
-- Slave connectivity functions
+- Advanced callbacks for topic data requests and responses handling
+- Slave connectivity check functions
 
 ## What is RS485?
 [RS485](https://en.wikipedia.org/wiki/RS-485) is a TIA/EIA hardware standard for wired communications over long distances and noisy industrial enviroments
