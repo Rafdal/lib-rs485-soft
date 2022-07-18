@@ -9,7 +9,7 @@ With 3 [abstraction layers](https://en.wikipedia.org/wiki/Abstraction_layer):
 
 ### 2: Network Layer (RSNetDevice.h)
 - *All the basic features*
-- Networking features (addresses for sender and receiver) up to 255 devices in a single network
+- Networking features (addresses for sender and receiver) up to 254 devices in a single network
 - Callbacks for incoming packets
 - Set intervals for periodic actions or packet broadcasting
 
