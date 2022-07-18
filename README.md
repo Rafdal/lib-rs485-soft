@@ -32,9 +32,9 @@ Is recommended to use PWM digital pins
 ## Object Declaration and Constructors
 ```c++
 RS485Soft rs485(RXpin, TXpin, controlPin);
-RSNetDevice device(RXpin, TXpin, controlPin);`
-RSMaster master(RXpin, TXpin, controlPin);`
-RSSlave slave(RXpin, TXpin, controlPin);`
+RSNetDevice device(RXpin, TXpin, controlPin);
+RSMaster master(RXpin, TXpin, controlPin);
+RSSlave slave(RXpin, TXpin, controlPin);
 ```
 
 # RS485 datasheet
