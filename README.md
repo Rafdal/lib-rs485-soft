@@ -31,8 +31,13 @@ Is recommended to use PWM digital pins
 
 ## Object Declaration and Constructors
 ```c++
+// Layer 1 (basic)
 RS485Soft rs485(RXpin, TXpin, controlPin);
+
+// Layer 2 (network)
 RSNetDevice device(RXpin, TXpin, controlPin);
+
+// Layer 3 (master-slave)
 RSMaster master(RXpin, TXpin, controlPin);
 RSSlave slave(RXpin, TXpin, controlPin);
 ```
