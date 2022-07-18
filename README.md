@@ -1,23 +1,24 @@
 # lib-rs485-soft
-SoftwareSerial based [RS485](https://en.wikipedia.org/wiki/RS-485) tools for sending and receiving data packets, networking and more!
+SoftwareSerial based [RS485](https://github.com/Rafdal/lib-rs485-soft/edit/main/README.md#what-is-rs485) tools for sending and receiving data packets, networking and more!
 
 With 3 [abstraction layers](https://en.wikipedia.org/wiki/Abstraction_layer):
 
-### 1: Basic layer (RS485Soft.h)
+### 1: Basic TX/RX Layer (RS485Soft.h)
 - Sending and receiving packets (half-duplex)
-- Data integrity check ([Pearson Hashing](https://en.wikipedia.org/wiki/Pearson_hashing))
+- Data integrity hash check ([Pearson Hashing](https://en.wikipedia.org/wiki/Pearson_hashing))
 
-### 2: Network Level (RSNetDevice.h)
+### 2: Network Layer (RSNetDevice.h)
 - *All the basic features*
 - Networking features (addresses for sender and receiver) up to 255 devices in a single network
 - Callbacks for incoming packets
-- Set intervals for periodic packet broadcasting (under review)
+- Set intervals for periodic actions or packet broadcasting
 
-### 3: Master-Slave +topics (RSMaster.h & RSSlave.h)
+### 3: Master-Slave Layer (RSMaster.h & RSSlave.h)
 - *All the networking and basic features*
-- Packet topic-handling
+- Master and Slave logic roles
 - Advanced callbacks for topic data requests and responses
-- Device connectivity functions
+- Packet topic-handling
+- Slave connectivity functions
 
 ## What is RS485?
 [RS485](https://en.wikipedia.org/wiki/RS-485) is a TIA/EIA hardware standard for wired communications over for long distances and noisy industrial enviroments
