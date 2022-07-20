@@ -56,7 +56,6 @@ void RSMaster::requestTopicTo(uint8_t deviceID, const char *topic, RSPacketCallb
     if (callback != NULL && requestList.size() < RSMASTER_MAX_REQUESTS)
     {
         RSPacket packet;
-        packet.push_back('?'); // request byte is '?'
         if(sendTopic(deviceID, topic, packet))
         {
             TopicRequest req(deviceID, topic, callback); // this also sets a timestamp
