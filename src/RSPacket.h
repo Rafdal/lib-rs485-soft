@@ -163,6 +163,8 @@ public:
 
 private:
 
+    void sayError();
+
 };
 
 

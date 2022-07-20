@@ -71,7 +71,7 @@ void setup()
 	/*
 	 * Set a function to manage not-responding devices
 	 * 		This function is executed when a single device 
-	 * 		exceeds RS_REQUEST_TIMEOUT and RS_MAX_FAILED_ATTEMPS
+	 * 		exceeds RS_DEFAULT_REQUEST_TIMEOUT and RS_MAX_FAILED_ATTEMPS
 	 */
 	device.onDeviceNotResponding([](uint8_t id){
 		Serial.print(F("Device not responding:\tdeviceID = "));

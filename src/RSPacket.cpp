@@ -10,12 +10,15 @@ RSPacket::RSPacket()
 
 void RSPacket::addTopic(const char topic[RS485_MAX_TOPIC_SIZE])
 {
-    if(strlen(topic) + size <= RS485_MAX_TOPIC_SIZE)
+    if((strlen(topic) + size + 2) <= RS485_MAX_DATA_SIZE)
     {
         push_front(':');
         push_front((uint8_t)strlen(topic), (uint8_t*)topic);
         push_front('$');
+		return;
     }
+	Serial.println(F("BAD addTopic"));
+	error = BOUNDING_ERROR;	
 }
 
 uint8_t RSPacket::hashTopic()
@@ -43,6 +46,7 @@ uint8_t RSPacket::pop_back()
 		return data[--size];
 
 	error = BOUNDING_ERROR;
+	sayError();
 	return 0;
 }
 
@@ -58,6 +62,7 @@ void RSPacket::push_front(uint8_t byte)
 		size++;
 		return;
 	}
+	sayError();
 	error = BOUNDING_ERROR;
 }
 
@@ -75,6 +80,7 @@ void RSPacket::push_front(uint8_t n, uint8_t array[])
 		size = size + n;
 		return;
 	}
+	sayError();
 	error = BOUNDING_ERROR;
 }
 
@@ -90,6 +96,7 @@ uint8_t RSPacket::pop_front()
 		return out;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 	return 0;
 }
 
@@ -103,6 +110,7 @@ void RSPacket::erase_front(uint8_t n)
 		return;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 }
 
 void RSPacket::push_back(uint8_t byte)
@@ -113,6 +121,7 @@ void RSPacket::push_back(uint8_t byte)
 		return;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 }
 
 void RSPacket::push_back(uint8_t n, uint8_t array[])
@@ -124,6 +133,7 @@ void RSPacket::push_back(uint8_t n, uint8_t array[])
 		return;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 }
 
 void RSPacket::copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos)
@@ -135,6 +145,7 @@ void RSPacket::copyBytes(uint8_t n, uint8_t* buffer, uint8_t pos)
 		return;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 }
 
 uint8_t RSPacket::hash()
@@ -153,6 +164,7 @@ void RSPacket::load(const char* str)
 		return;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 }
 
 void RSPacket::load(RSPacket& p)
@@ -166,6 +178,7 @@ void RSPacket::load(RSPacket& p)
 		return;
 	}
 	error = BOUNDING_ERROR;
+	sayError();
 }
 
 
@@ -225,6 +238,11 @@ void RSPacket::print()
 	Serial.println(F("}\n}"));
 }
 
+void RSPacket::sayError()
+{
+	Serial.println(F("RSPacket ERR"));
+}
+
 bool RSPacket::getTopic(char buffer[RS485_MAX_TOPIC_SIZE])
 {
 	// -> topic structure looks like:  "$TOPIC:"
@@ -237,7 +255,7 @@ bool RSPacket::getTopic(char buffer[RS485_MAX_TOPIC_SIZE])
         while(readingTopic)
         {
             //                                  +2 for the '$' and ':' characters
-            if((tsize < (RS485_MAX_TOPIC_SIZE - 1)) && (tsize + 2) < size)
+            if((tsize < (RS485_MAX_TOPIC_SIZE - 1)) && (tsize + 2) <= size)
             {
                 char c = data[tsize + 1]; // +1 for the '$'
                 

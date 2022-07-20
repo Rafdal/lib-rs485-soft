@@ -23,7 +23,9 @@ void RSSlave::addListenTopic(ListenTopic& listen)
         }
 
         listenTopics.push_back(listen);
+        return; // OK
     }
+    Serial.println(F("bad topic"));
 }
 
 void RSSlave::onTopicAnswer(const char* topic, RSPacketCallback callback)

@@ -6,7 +6,7 @@
 #include <list>
 
 #define RSMASTER_MAX_REQUESTS   8
-#define RS_REQUEST_TIMEOUT      500    // [ms]    
+#define RS_DEFAULT_REQUEST_TIMEOUT      500    // [ms]    
 #define RS_MAX_FAILED_ATTEMPS   4
 
 struct TopicRequest;
@@ -32,6 +32,13 @@ public:
      */
     void requestTopicTo(uint8_t deviceID, const char* topic, RSPacketCallback callback);
     
+    /**
+     * @brief Set a Timeout in milliseconds for topic requests
+     * 
+     * @param tout (unsigned int) time [ms]
+     */
+    void setRequestTimeout(unsigned int tout);
+
     /**
      * @brief Send a packet with a specific topic on it
      * 
@@ -63,6 +70,7 @@ private:
     std::list<TopicRequest> requestList;
     void loopTopics();
 
+    unsigned int requestTimeout = RS_DEFAULT_REQUEST_TIMEOUT;
     std::list<FailedAttemp> failAttempts;
     void resetFails(uint8_t id);
     uint8_t incrementFails(uint8_t id);
@@ -70,6 +78,11 @@ private:
 
     void (*deviceNotRespondingCallback)(uint8_t deviceID) = NULL;
 };
+
+inline void RSMaster::setRequestTimeout(unsigned int tout)
+{
+    requestTimeout = tout;
+}
 
 inline void RSMaster::onDeviceNotResponding(void (*callback)(uint8_t))
 {

@@ -1,13 +1,5 @@
 #include "RSMaster.h"
 
-RSMaster::RSMaster(uint8_t rxPin, uint8_t txPin, uint8_t txControl) : RSNetDevice(rxPin, txPin, txControl)
-{
-}
-
-RSMaster::~RSMaster()
-{
-}
-
 struct TopicRequest
 {
     uint8_t deviceID;
@@ -35,6 +27,16 @@ struct FailedAttemp
     uint8_t id;
     uint8_t count;
 };
+
+
+
+RSMaster::RSMaster(uint8_t rxPin, uint8_t txPin, uint8_t txControl) : RSNetDevice(rxPin, txPin, txControl)
+{
+}
+
+RSMaster::~RSMaster()
+{
+}
 
 bool RSMaster::sendTopic(uint8_t deviceID, const char* topic, RSPacket& packet)
 {
@@ -71,7 +73,7 @@ void RSMaster::loopTopics()
     unsigned long currentMs = millis();
     for(auto it = requestList.begin(); it != requestList.end(); it++)
     {
-        if(currentMs - (*it).timestamp >= RS_REQUEST_TIMEOUT)
+        if(currentMs - (*it).timestamp >= requestTimeout)
         {
             Serial.print(F("Request \""));
             Serial.print((*it).topic);

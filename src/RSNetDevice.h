@@ -93,8 +93,10 @@ protected:
 
 inline void RSNetDevice::setInterval(unsigned int interval, void (*callback)(void))
 {
-    if(callback != NULL && interval > RS485_MIN_INTERVAL_TIME)
+    if(callback != NULL)
         intervals.push_back( IntervalCallback(callback, interval) );
+    else
+        Serial.println(F("BAD setInterval"));
 }
 
 inline void RSNetDevice::begin(uint8_t localID, const char* deviceName)
