@@ -5,6 +5,7 @@
 // #define RS485_DEBUG_TIMESTAMP	// print reading timestamps
 
 #define RS485_DEFAULT_TIMEOUT 50 // ms
+#define RS485_DEFAULT_BAUDRATE  9600
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>

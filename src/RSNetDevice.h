@@ -6,8 +6,6 @@
 
 #include <vector>
 
-#define RS485_DEFAULT_BAUDRATE  9600
-
 #if (RS485_MAX_TOPIC_SIZE + 2) >= RS485_MAX_DATA_SIZE
 #error "RS485_MAX_TOPIC_SIZE >> RS485_MAX_DATA_SIZE"
 #endif
